@@ -1,4 +1,5 @@
 import { app } from './app.js';
+import { config } from './config.js';
 
 // Entry point: create the HTTP server and start listening for requests.
-app.listen(4000, () => console.log('Server started on port 4000'));
+app.listen(config.port, () => console.log(`Server started on port ${config.port}`));

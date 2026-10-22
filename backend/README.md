@@ -5,6 +5,8 @@ TypeScript, and ESM.
 
 ## Getting started
 
+Use Node.js 24 or newer and pnpm.
+
 Run these commands from the repository root:
 
 ```sh
@@ -12,8 +14,40 @@ pnpm -C backend install
 pnpm -C backend dev
 ```
 
-The server listens on port `4000`. Automatic restarts on file changes are not
-configured yet.
+The server defaults to port `4000`. Automatic restarts on file changes are not
+configured yet. If pnpm is not available directly, run `corepack pnpm` instead.
+
+## Environment configuration
+
+Optionally copy `backend/.env.example` to `backend/.env` and change `PORT`.
+From the repository root in PowerShell:
+
+```powershell
+Copy-Item backend/.env.example backend/.env
+```
+
+The development command uses Node.js's `--env-file-if-exists=.env` flag to load
+the file before application modules run. The path is relative to the backend
+working directory. The file is optional; a missing file does not prevent startup.
+Variables already set in the process environment take precedence over the file.
+Other startup commands must explicitly load the file or supply environment variables.
+
+`src/config.ts` converts `process.env.PORT` from a string to a number and validates
+it before the server starts. An unset value defaults to `4000`; an empty,
+non-numeric, fractional, or out-of-range value stops startup with a clear error.
+The allowed range is `1` through `65535`.
+
+To override the port for one PowerShell session:
+
+```powershell
+$env:PORT = '4100'
+pnpm -C backend dev
+# After stopping the server, remove the override to use .env or the default again.
+Remove-Item Env:PORT
+```
+
+Keep `.env` local: it is ignored by Git. Commit `.env.example` with non-secret
+examples so other developers know which configuration options exist.
 
 ## Express application and HTTP server
 
@@ -21,8 +55,8 @@ configured yet.
   request handling and will register middleware, routes, and error handlers as
   they are added. Importing this module does not open a network port.
 - `src/main.ts` is the process entry point. It imports `app` and calls
-  `app.listen(4000)`, which creates a Node.js HTTP server and starts accepting
-  network requests.
+  `app.listen(config.port)`, which creates a Node.js HTTP server and starts
+  accepting network requests. `src/config.ts` reads and validates the port.
 
 Request flow:
 
