@@ -52,8 +52,8 @@ examples so other developers know which configuration options exist.
 ## Express application and HTTP server
 
 - `src/app.ts` creates and exports the Express application, `app`. It defines
-  request handling and will register middleware, routes, and error handlers as
-  they are added. Importing this module does not open a network port.
+  request handling and registers the JSON parser, routes, and fallback handlers.
+  Importing this module does not open a network port.
 - `src/main.ts` is the process entry point. It imports `app` and calls
   `app.listen(config.port)`, which creates a Node.js HTTP server and starts
   accepting network requests. `src/config.ts` reads and validates the port.
@@ -61,7 +61,9 @@ examples so other developers know which configuration options exist.
 Request flow:
 
 ```text
-Client → HTTP server → Express application → Route handler → Response to client
+Client → HTTP server → JSON parser → Route handler → Response to client
+                                  → Not-found handler (no matching route)
+                     → Error handler (parsing or request processing fails)
 ```
 
 This separation allows future tests to import the application without
@@ -75,6 +77,58 @@ Relative imports use the emitted JavaScript file extension: `app.ts` compiles to
 `app.js`, so Node.js can resolve the module after compilation. TypeScript resolves
 the corresponding `.ts` source file during type checking, and `tsx` supports this
 import when running the source code directly.
+
+## JSON requests and error handling
+
+`express.json({ limit: '100kb' })` parses requests with a JSON content type before
+route handlers run. Parsed data is available as `req.body`; it is still untrusted
+input. Parsing JSON does not validate required fields or enforce booking rules.
+Other content types are not parsed by this middleware.
+
+Middleware runs in registration order. Normal middleware uses `next()` to continue
+processing. `next(error)` skips normal handlers and forwards the error to an error
+handler. Express 5 also forwards errors thrown by route handlers and rejected
+promises returned by async route handlers.
+
+After all routes, `notFound` returns a JSON `404` for unmatched requests. A missing
+route does not automatically throw an error in Express, so it needs its own handler.
+The final `errorHandler` uses four arguments `(error, req, res, next)`; Express uses
+this signature to distinguish error handlers from ordinary middleware.
+
+Errors use a consistent response structure:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Route not found."
+  }
+}
+```
+
+| Status | Code | Meaning |
+| --- | --- | --- |
+| 400 | `INVALID_JSON` | The JSON parser rejected the body |
+| 404 | `NOT_FOUND` | No route matched the request |
+| 413 | `PAYLOAD_TOO_LARGE` | The body exceeds the 100kb parsing limit |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | The JSON parser does not support the body encoding |
+| 500 | `INTERNAL_SERVER_ERROR` | An unexpected request processing error occurred |
+
+Malformed JSON is rejected before route matching, so it can produce `400` even
+when sent to an unknown route. The parser accepts JSON objects and arrays by
+default; standalone primitives are rejected. The server logs unexpected errors,
+but responses do not expose stack traces or internal error messages. If a response
+has already started, the error is forwarded to Express's default error handler.
+
+To check a missing route and malformed JSON from PowerShell (using curl.exe):
+
+```powershell
+curl.exe -i http://localhost:4000/api/missing
+'{"name":' | curl.exe -i -X POST http://localhost:4000/api/missing -H 'Content-Type: application/json' --data-binary '@-'
+```
+
+Expect `404` with `NOT_FOUND` for the first request and `400` with `INVALID_JSON`
+for the second. No booking or other POST endpoints have been implemented yet.
 
 ## Verification
 
