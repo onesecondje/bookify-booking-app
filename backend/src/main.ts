@@ -1,9 +1,4 @@
-import express from 'express';
+import { app } from './app.js';
 
-const app = express();
-
-app.get('/api/health', (req, res) => {
-  return res.status(200).send({ ok: true });
-});
-
+// Entry point: create the HTTP server and start listening for requests.
 app.listen(4000, () => console.log('Server started on port 4000'));
