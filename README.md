@@ -9,8 +9,9 @@ A Booksy-style application for booking service appointments.
 - `compose.yaml`: local PostgreSQL development environment.
 
 PostgreSQL runs in Docker. The frontend and backend currently run directly on
-the host. The backend is not connected to the database yet, and no application
-tables have been created.
+the host. The backend connects to PostgreSQL using `pg`, checks the connection
+before accepting HTTP requests, and closes its pool during graceful shutdown.
+No application tables have been created yet.
 
 ## Requirements
 
@@ -113,4 +114,6 @@ an existing database, change its roles, or reset its password.
 They are separate files with separate consumers. Compose reads the root `.env`
 for variable substitution; the service's `environment` section selects which
 values enter the container. It does not pass these values to the host Node.js
-process. Backend database configuration will be added when the API is connected.
+process. Set `DATABASE_URL` in `backend/.env` to match the database settings in
+the root `.env`. See [backend setup](backend/README.md) for the connection string
+format and startup instructions.

@@ -6,4 +6,25 @@ if (!/^\d+$/.test(portValue) || !Number.isInteger(port) || port < 1 || port > 65
   throw new Error('PORT must be an integer between 1 and 65535.');
 }
 
-export const config = { port };
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required. Set it in backend/.env or the environment.');
+}
+
+try {
+  const url = new URL(databaseUrl);
+
+  if (
+    !['postgres:', 'postgresql:'].includes(url.protocol) ||
+    !url.hostname ||
+    url.pathname.length <= 1
+  ) {
+    throw new Error('Invalid database URL.');
+  }
+} catch {
+  // Never include the connection string in errors: it can contain a password.
+  throw new Error('DATABASE_URL must be a PostgreSQL URL with a host and database name.');
+}
+
+export const config = { port, databaseUrl };
