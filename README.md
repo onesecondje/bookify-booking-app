@@ -11,7 +11,8 @@ A Booksy-style application for booking service appointments.
 PostgreSQL runs in Docker. The frontend and backend currently run directly on
 the host. The backend connects to PostgreSQL using `pg`, checks the connection
 before accepting HTTP requests, and closes its pool during graceful shutdown.
-No application tables have been created yet.
+The initial migration defines businesses and their services. No booking endpoints
+or demonstration data have been added yet.
 
 ## Requirements
 
@@ -117,3 +118,16 @@ values enter the container. It does not pass these values to the host Node.js
 process. Set `DATABASE_URL` in `backend/.env` to match the database settings in
 the root `.env`. See [backend setup](backend/README.md) for the connection string
 format and startup instructions.
+
+## Apply the database schema
+
+After configuring `backend/.env` and installing backend dependencies, run:
+
+```sh
+pnpm -C backend db:migrate
+```
+
+This creates the `businesses` and `services` tables and records the migration in
+`schema_migrations`. Re-running the command skips already applied migrations.
+The API does not run migrations automatically. See [migration documentation](backend/migrations/README.md)
+for the schema and how to add future changes.

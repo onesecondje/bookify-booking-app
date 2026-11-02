@@ -15,9 +15,11 @@ docker compose up -d --wait postgres
 ```
 
 Create `backend/.env` from `backend/.env.example` if it does not already exist,
-and set `DATABASE_URL` to match your database credentials. Then start the API:
+and set `DATABASE_URL` to match your database credentials. Apply migrations and
+start the API:
 
 ```sh
+pnpm -C backend db:migrate
 pnpm -C backend dev
 ```
 
@@ -114,6 +116,21 @@ error on an idle pool connection also initiates shutdown, with a nonzero exit co
 A 10-second deadline forces termination if shutdown cannot complete. A forced OS
 termination cannot run this cleanup; signal support varies by operating system.
 
+## Database migrations
+
+Run `pnpm -C backend db:migrate` from the repository root to create or update the
+schema. The initial migration creates `businesses` and `services`, with a foreign
+key linking each service to its business. `schema_migrations` records applied files
+and checksums so subsequent runs only apply new files.
+
+The migration runner uses a single transaction and connection. A failed batch
+rolls back both SQL changes and history entries. A database advisory lock prevents
+two cooperating runners from applying the same migration at the same time.
+Migrations are separate from HTTP startup and do not insert demonstration data.
+
+See [migration documentation](migrations/README.md) for column definitions,
+constraints, file naming, transactions, and limitations.
+
 ## Express application and HTTP server
 
 - `src/app.ts` creates and exports the Express application, `app`. It defines
@@ -201,6 +218,7 @@ for the second. No booking or other POST endpoints have been implemented yet.
 ```sh
 pnpm -C backend lint
 pnpm -C backend exec tsc --noEmit
+pnpm -C backend test
 ```
 
 After starting the server, send `GET http://localhost:4000/api/health`, for example
@@ -213,5 +231,9 @@ Invoke-RestMethod http://localhost:4000/api/health
 Expect HTTP `200` with JSON `{ "ok": true }`.
 This endpoint checks that the HTTP server responds. The database is verified at
 startup, not on every health request; a later database outage does not necessarily
-make this endpoint fail. No application tables have been created yet.
-The `test` script is currently a placeholder that exits with an error.
+make this endpoint fail. Apply migrations explicitly before using application tables.
+
+The test command runs database integration tests using Node.js's built-in test
+runner. PostgreSQL must be available and `DATABASE_URL` must be configured. Tests
+use temporary schemas to verify migration behavior and table constraints without
+changing application tables.
