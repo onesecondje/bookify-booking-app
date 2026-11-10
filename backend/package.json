@@ -10,6 +10,9 @@
   "scripts": {
     "dev": "tsx --env-file-if-exists=.env src/main.ts",
     "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "db:introspect": "prisma db pull",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
     "test": "node --env-file-if-exists=.env --import tsx --test test/*.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -19,6 +22,8 @@
   "license": "ISC",
   "packageManager": "pnpm@10.29.1",
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "express": "^5.2.1",
     "pg": "^8.23.1"
   },
@@ -29,6 +34,7 @@
     "@types/pg": "^8.23.1",
     "eslint": "^10.0.0",
     "prettier": "^3.8.1",
+    "prisma": "7.10.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0"

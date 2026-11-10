@@ -1,0 +1,45 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations
+model Business {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  timeZone  String    @map("time_zone")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  services  Service[]
+
+  @@map("businesses")
+}
+
+// Temporary introspection of the legacy history; retire it during baselining.
+// @@ignore excludes the client API, not Prisma Migrate's schema management.
+model LegacyMigration {
+  filename  String   @id
+  checksum  String
+  appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
+
+  @@map("schema_migrations")
+  @@ignore
+}
+
+/// This table contains check constraints and requires additional setup for migrations
+model Service {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String   @map("business_id") @db.Uuid
+  name            String
+  durationMinutes Int      @map("duration_minutes")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "services_business_id_fkey")
+
+  @@index([businessId], map: "services_business_id_idx")
+  @@map("services")
+}

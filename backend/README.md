@@ -118,6 +118,42 @@ termination cannot run this cleanup; signal support varies by operating system.
 
 ## Database migrations
 
+### Prisma transition: introspection only
+
+Prisma CLI, Client, and the PostgreSQL adapter are pinned to 7.10.1. The API still
+uses `pg.Pool`, and `db:migrate` still runs the existing SQL migration runner.
+Prisma Migrate has not been baselined yet. Do not run `db push`, `migrate dev`, or
+`migrate reset` against the application database during this intermediate step.
+
+`prisma7.config.ts` loads an optional backend `.env` with Node.js's built-in
+`loadEnvFile`; existing process variables take precedence. Run Prisma commands
+from the backend directory, or use these scripts from the repository root:
+
+```sh
+pnpm -C backend db:validate
+pnpm -C backend db:generate
+pnpm -C backend db:introspect
+```
+
+Introspection reads the database and updates `prisma/schema.prisma`; it does not
+alter database tables. Review its diff before keeping changes. Generation writes
+the ESM TypeScript client to `src/generated/prisma`, which is ignored by Git and
+ESLint. Run generation after installing dependencies and after model changes.
+The application TypeScript configuration includes `src`; the CLI configuration
+is outside the application's compilation root.
+
+`Business` and `Service` use `@map` and `@@map` to preserve existing snake_case
+database names. UUIDs remain database-generated via `gen_random_uuid()`, timestamps
+remain `timestamptz(6)`, and the service relation explicitly preserves delete
+restriction and `ON UPDATE NO ACTION`. PostgreSQL still enforces all four CHECK
+constraints; Prisma schema cannot fully represent them. The baseline SQL must
+include these constraints before adopting Prisma Migrate.
+
+`LegacyMigration` temporarily describes `schema_migrations`. Its `@@ignore`
+excludes it from Prisma Client, not from migration management. During baselining,
+archive the old history outside the managed schema and remove this model before
+creating the baseline. Only then retire the existing migration runner.
+
 Run `pnpm -C backend db:migrate` from the repository root to create or update the
 schema. The initial migration creates `businesses` and `services`, with a foreign
 key linking each service to its business. `schema_migrations` records applied files
