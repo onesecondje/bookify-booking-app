@@ -146,5 +146,5 @@ The frontend home page now reads that API on the Next.js server and displays the
 service catalogue. See the frontend README for environment settings and startup.
 
 The database now includes specialists and their service assignments, with database
-constraints preventing assignments across businesses. Specialist demo data and
-public API integration are the next steps.
+constraints preventing assignments across businesses. The explicit seed includes
+two specialists and three assignments; specialist public API integration is next.

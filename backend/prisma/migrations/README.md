@@ -141,9 +141,9 @@ many-to-many assignments, defaults, duplicate rejection, cross-business and miss
 references, null/blank values, delete/update restrictions, indexes, and preservation
 of existing data during baseline-plus-upgrade deployment.
 
-This step adds no specialist seed, API, or UI. Existing demo data and the public
-services endpoint remain unchanged. Next: add demo specialists and assignments,
-then a public specialist lookup for a selected service.
+The explicit demo seed now adds Alice and Alex and three service assignments; see
+the backend README. No specialist API or UI is implemented yet. The public services
+endpoint remains unchanged. Next: a public specialist lookup for a selected service.
 
 ## Integration tests
 

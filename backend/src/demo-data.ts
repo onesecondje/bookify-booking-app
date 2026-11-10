@@ -28,6 +28,26 @@ export const demoServices = [
   },
 ];
 
+export const demoSpecialists = [
+  { id: '30000000-0000-4000-8000-000000000001', name: 'Alice', isActive: true },
+  { id: '30000000-0000-4000-8000-000000000002', name: 'Alex', isActive: true },
+];
+
+export const demoAssignments = [
+  {
+    specialistId: '30000000-0000-4000-8000-000000000001',
+    serviceId: '20000000-0000-4000-8000-000000000001',
+  },
+  {
+    specialistId: '30000000-0000-4000-8000-000000000001',
+    serviceId: '20000000-0000-4000-8000-000000000002',
+  },
+  {
+    specialistId: '30000000-0000-4000-8000-000000000002',
+    serviceId: '20000000-0000-4000-8000-000000000001',
+  },
+];
+
 export async function seedDemoData(prisma: PrismaClient): Promise<void> {
   await prisma.$transaction(async (transaction) => {
     await transaction.business.upsert({
@@ -47,6 +67,25 @@ export async function seedDemoData(prisma: PrismaClient): Promise<void> {
           durationMinutes: data.durationMinutes,
           isActive: data.isActive,
         },
+      });
+    }
+
+    for (const specialist of demoSpecialists) {
+      const data = { ...specialist, businessId: demoBusiness.id };
+      await transaction.specialist.upsert({
+        where: { id: specialist.id },
+        create: data,
+        update: { businessId: data.businessId, name: data.name, isActive: data.isActive },
+      });
+    }
+
+    for (const assignment of demoAssignments) {
+      const data = { ...assignment, businessId: demoBusiness.id };
+      await transaction.specialistService.upsert({
+        where: { businessId_specialistId_serviceId: data },
+        create: data,
+        // Existing assignments have no editable payload; preserve their creation time.
+        update: {},
       });
     }
   });

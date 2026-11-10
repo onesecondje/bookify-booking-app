@@ -1,9 +1,17 @@
 import { closeDatabase, prisma } from './db.js';
-import { demoBusiness, demoServices, seedDemoData } from './demo-data.js';
+import {
+  demoAssignments,
+  demoBusiness,
+  demoServices,
+  demoSpecialists,
+  seedDemoData,
+} from './demo-data.js';
 
 try {
   await seedDemoData(prisma);
-  console.log(`Demo data ready: business ${demoBusiness.id}, ${demoServices.length} services.`);
+  console.log(
+    `Demo data ready: business ${demoBusiness.id}, ${demoServices.length} services, ${demoSpecialists.length} specialists, ${demoAssignments.length} assignments.`,
+  );
 } catch {
   // Driver and Prisma errors may contain connection details or row values.
   console.error('Demo seed failed. No changes from this transaction were committed.');

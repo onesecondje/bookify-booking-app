@@ -167,8 +167,8 @@ belong to a business; explicit service assignments support many-to-many relation
 Composite foreign keys prevent cross-business assignments, and a composite primary
 key prevents duplicates. Names must be nonblank; active defaults to true. Referenced
 specialists/services cannot be deleted while assignments exist. See the migration
-documentation for key/index details. Specialist seed data, endpoints, and UI are
-not implemented yet.
+documentation for key/index details. Specialist endpoints and UI are not implemented yet; the explicit demo seed
+includes specialists and service assignments.
 
 ## Demonstration data
 
@@ -192,21 +192,37 @@ businesses the application can support.
 | Beard trim    | 15                 | Yes    |
 | Hair coloring | 90                 | No     |
 
+The demo also includes two active specialists and three assignments:
+
+| Specialist | UUID                                 | Assigned services   |
+| ---------- | ------------------------------------ | ------------------- |
+| Alice      | 30000000-0000-4000-8000-000000000001 | Haircut, Beard trim |
+| Alex       | 30000000-0000-4000-8000-000000000002 | Haircut             |
+
+Inactive Hair coloring remains unassigned. This demonstrates both directions of
+the many-to-many relation without defining a limit on specialists or assignments.
+
 Each demo record has a stable UUID. Upserts identify records by that UUID, so
 renaming one does not create a duplicate on the next seed. Repeated runs restore
 the defined demo names, time zone, durations, business links, and active flags.
-Creation timestamps are preserved. Only those fixed demo IDs are updated; other
+Specialist names and active flags are restored too. Assignments are upserted by
+the composite key (businessId, specialistId, serviceId); existing assignments have
+an empty update payload, preserving their creation timestamps. Missing required
+assignments are recreated. Additional manual assignments are retained.
+Creation timestamps of existing records are preserved. Only those fixed demo IDs are updated; other
 records are not removed or modified. Run this against a development database;
 manual edits to these demo records are deliberately overwritten on the next run.
 The script does not prune records removed from its dataset definition.
 
-All upserts share one Prisma transaction: a failure rolls back that run's changes.
+All upserts share one Prisma transaction, ordered business, services, specialists,
+then assignments. A failure at any stage rolls back that run's changes. Apply all
+migrations before seeding.
 Logs omit driver error details and row values. Schema defaults still generate IDs
-for normal inserts; fixed seed IDs require no migration. No specialists or assignments are seeded yet. Schedules, bookings, and contact
-data are also not seeded; their models do not exist yet.
+for normal inserts; fixed seed IDs require no migration. Schedules, bookings, and contact data are not seeded; their models do not exist yet.
 
 Integration tests verify repeatability, preservation of unrelated records and
-creation times, and rollback when a later service insert fails. Tests use isolated
+creation times, restoration of missing assignments, preservation of additional assignments, and
+rollback when a service or later assignment insert fails. Tests use isolated
 temporary schemas and never seed the application tables.
 
 ## Express application and HTTP server
