@@ -9,7 +9,7 @@ A Booksy-style application for booking service appointments.
 - `compose.yaml`: local PostgreSQL development environment.
 
 PostgreSQL runs in Docker. The frontend and backend currently run directly on
-the host. The backend connects to PostgreSQL using `pg`, checks the connection
+the host. The backend connects to PostgreSQL using Prisma Client with a shared `pg` pool, checks the connection
 before accepting HTTP requests, and closes its pool during graceful shutdown.
 The initial migration defines businesses and their services. No booking endpoints
 or demonstration data have been added yet.

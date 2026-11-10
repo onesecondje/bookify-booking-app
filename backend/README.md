@@ -81,13 +81,22 @@ the database is reachable and that its credentials are accepted.
 
 ## Database pool and process lifecycle
 
-`src/db.ts` exports one shared `pg.Pool`. Constructing a pool does not immediately
-open connections: it creates them on demand, up to a maximum of 10. Reusing
-connections avoids performing a new connection handshake for every HTTP request.
+`src/db.ts` exports one shared Prisma Client and one underlying `pg.Pool`.
+The pool is passed to `PrismaPg`, so Prisma reuses the same connections and limits.
+Creating the objects does not open connections immediately. The application owns
+the external pool; `disposeExternalPool: false` prevents the adapter from closing it.
 
-For a single query, use `await pool.query(sql, parameters)`. The pool borrows and
-releases a connection automatically. Future transactions will need an explicitly
-checked-out client, with release in a `finally` block so the pool cannot leak clients.
+Application data access should use `prisma` from `src/db.ts`, for example:
+
+```ts
+import { prisma } from './db.js';
+
+const services = await prisma.service.findMany({ where: { businessId } });
+```
+
+This is an example, not an implemented route. Use Prisma's transaction API for
+future multi-query transactions; do not mix Prisma operations and a separately
+checked-out pg connection expecting them to share a transaction.
 
 Current limits:
 
@@ -110,8 +119,8 @@ is already occupied. Missing or malformed configuration fails during module load
 before the pool is created.
 
 On `SIGINT` (normally Ctrl+C) or `SIGTERM`, shutdown first stops accepting new HTTP
-connections and waits for active requests, then calls `pool.end()` to close database
-connections. Repeated shutdown requests do not close the pool twice. An unexpected
+connections and waits for active requests, then calls `closeDatabase()`: Prisma disconnects first, and the application closes
+the external pool in a finally block even if disconnection fails. Repeated shutdown requests do not close the pool twice. An unexpected
 error on an idle pool connection also initiates shutdown, with a nonzero exit code.
 A 10-second deadline forces termination if shutdown cannot complete. A forced OS
 termination cannot run this cleanup; signal support varies by operating system.
@@ -119,8 +128,8 @@ termination cannot run this cleanup; signal support varies by operating system.
 ## Database migrations
 
 Prisma CLI, Client, and the PostgreSQL adapter are pinned to 7.10.1. Prisma Migrate
-owns schema changes in `prisma/migrations`; the API still uses `pg.Pool` until the
-next client integration step. Migrations run explicitly, separately from HTTP startup.
+owns schema changes in `prisma/migrations`; the API uses Prisma Client through
+`PrismaPg` and the shared `pg.Pool`. Migrations run explicitly, separately from HTTP startup.
 
 Run these commands from the repository root:
 
@@ -258,3 +267,9 @@ runner. PostgreSQL must be available and `DATABASE_URL` must be configured. Test
 use temporary schemas to run the real Prisma CLI and verify deployment, baselining,
 and table constraints without changing application tables. A role with CREATE SCHEMA
 permission is required. Interrupted tests may leave a bookify*test*\* schema behind.
+
+Server integration tests also start a child process to verify the health endpoint,
+Prisma startup failure, HTTP port conflicts, and graceful resource cleanup. On
+Windows, OS SIGTERM forcibly terminates a process, so a test-only IPC fixture emits
+the signal event to exercise the same application handler portably. This does not
+verify OS signal delivery on every platform. Production code has no test IPC API.

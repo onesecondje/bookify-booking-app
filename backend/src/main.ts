@@ -2,7 +2,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { app } from './app.js';
 import { config } from './config.js';
-import { pool } from './db.js';
+import { closeDatabase, pool, prisma } from './db.js';
 
 const server = createServer(app);
 let shuttingDown = false;
@@ -35,7 +35,7 @@ async function shutdown(exitCode: number): Promise<void> {
       }
     } finally {
       // Let active HTTP requests finish before closing their database connections.
-      await pool.end();
+      await closeDatabase();
     }
 
     console.log('HTTP server and database pool closed.');
@@ -57,7 +57,7 @@ pool.on('error', (error) => {
 });
 
 try {
-  await pool.query('SELECT 1');
+  await prisma.$queryRaw`SELECT 1`;
 
   if (!shuttingDown) {
     console.log('Database connection verified.');
