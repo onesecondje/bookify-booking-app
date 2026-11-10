@@ -144,3 +144,7 @@ services. See the backend README for response fields and error behavior.
 
 The frontend home page now reads that API on the Next.js server and displays the
 service catalogue. See the frontend README for environment settings and startup.
+
+The database now includes specialists and their service assignments, with database
+constraints preventing assignments across businesses. Specialist demo data and
+public API integration are the next steps.

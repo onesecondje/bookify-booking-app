@@ -5,8 +5,8 @@ have been retired; the original work remains in Git commit 8a88652.
 
 ## New databases
 
-Run `pnpm -C backend db:migrate`. Prisma applies `0_init/migration.sql` and records
-it in `public._prisma_migrations`. Repeated deployment skips applied migrations.
+Run `pnpm -C backend db:migrate`. Prisma applies the baseline and subsequent
+migrations, recording them in `public._prisma_migrations`. Repeated deployment skips applied migrations.
 No demonstration data is inserted. Run `db:generate` separately for the client.
 
 ## Existing databases from the SQL runner
@@ -92,6 +92,58 @@ One business can have many services. Each service belongs to exactly one busines
 - The `services_business_id_idx` index helps look up services for a business.
   PostgreSQL automatically indexes primary keys, but not referencing foreign keys.
 - No service prices, specialists, bookings, or sample data are included yet.
+
+## Specialists and service assignments
+
+Migration 20261110000100_add_specialists_and_service_assignments adds specialists
+and specialist_services without rewriting existing businesses or services. It is
+wrapped in BEGIN/COMMIT. The baseline remains unchanged.
+
+A specialist record belongs to one business and has a database-generated UUID,
+required nonblank name, active flag (default true), and timestamptz(6) creation
+instant. This represents a business's specialist entry, not a login/user account.
+There is no specialist limit per business.
+
+SpecialistService is an explicit many-to-many model: each row assigns one service
+to one specialist. It stores business_id, specialist_id, service_id, and created_at.
+Its composite primary key (business_id, specialist_id, service_id) rejects duplicate
+assignments. A specialist may provide multiple services; a service may have multiple
+specialists. No assignment implies working hours or appointment availability.
+
+Two composite foreign keys enforce business boundaries:
+
+- (business_id, specialist_id) references specialists(business_id, id).
+- (business_id, service_id) references services(business_id, id).
+
+Both referenced tables have an explicit unique index on (business_id, id) because
+PostgreSQL needs a matching unique key for each composite reference. Although id is
+already globally unique, those indexes allow the database to verify business_id
+as part of the relation. UUIDs alone would not prevent cross-business assignments.
+The existing services_business_id_idx is preserved.
+
+The assignment primary key supports business/specialist lookups. A reverse index
+on (business_id, service_id) supports finding specialists for a service. The
+specialist composite unique index also supports business-prefixed lookups.
+
+All new foreign keys use ON DELETE RESTRICT and ON UPDATE NO ACTION. Explicitly
+remove assignments before deleting referenced specialists/services; no implicit
+cascade is performed. A business with specialists cannot be deleted. Changing a
+referenced business/key is blocked while assignments exist. Deactivation preserves
+assignments, and assignments to inactive records are not prohibited by this schema;
+future public queries/booking validation must enforce active status.
+
+The specialist name CHECK uses length(btrim(name)) > 0, matching the existing name
+constraints (ordinary spaces). It is maintained in SQL, not Prisma schema. Prisma
+migration diff does not verify CHECK constraints, so integration tests exercise them.
+
+Migration tests deploy to isolated schemas and verify Prisma relation queries,
+many-to-many assignments, defaults, duplicate rejection, cross-business and missing
+references, null/blank values, delete/update restrictions, indexes, and preservation
+of existing data during baseline-plus-upgrade deployment.
+
+This step adds no specialist seed, API, or UI. Existing demo data and the public
+services endpoint remain unchanged. Next: add demo specialists and assignments,
+then a public specialist lookup for a selected service.
 
 ## Integration tests
 

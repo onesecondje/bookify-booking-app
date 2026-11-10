@@ -160,6 +160,16 @@ are explicitly included in baseline SQL because Prisma schema cannot fully expre
 See [migration documentation](prisma/migrations/README.md) for baseline adoption,
 future migrations, transaction behavior, and integration tests.
 
+## Specialists
+
+The database also contains Specialist and SpecialistService models. Specialists
+belong to a business; explicit service assignments support many-to-many relations.
+Composite foreign keys prevent cross-business assignments, and a composite primary
+key prevents duplicates. Names must be nonblank; active defaults to true. Referenced
+specialists/services cannot be deleted while assignments exist. See the migration
+documentation for key/index details. Specialist seed data, endpoints, and UI are
+not implemented yet.
+
 ## Demonstration data
 
 After migrations and client generation, populate the local development database:
@@ -192,8 +202,8 @@ The script does not prune records removed from its dataset definition.
 
 All upserts share one Prisma transaction: a failure rolls back that run's changes.
 Logs omit driver error details and row values. Schema defaults still generate IDs
-for normal inserts; fixed seed IDs require no migration. No specialists, schedules,
-bookings, or contact data are seeded because their models do not exist yet.
+for normal inserts; fixed seed IDs require no migration. No specialists or assignments are seeded yet. Schedules, bookings, and contact
+data are also not seeded; their models do not exist yet.
 
 Integration tests verify repeatability, preservation of unrelated records and
 creation times, and rollback when a later service insert fails. Tests use isolated

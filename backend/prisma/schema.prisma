@@ -10,25 +10,55 @@ datasource db {
 
 /// This table contains check constraints and requires additional setup for migrations
 model Business {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String
-  timeZone  String    @map("time_zone")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  services  Service[]
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  timeZone    String       @map("time_zone")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  services    Service[]
+  specialists Specialist[]
 
   @@map("businesses")
 }
 
 /// This table contains check constraints and requires additional setup for migrations
 model Service {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  businessId      String   @map("business_id") @db.Uuid
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String              @map("business_id") @db.Uuid
   name            String
-  durationMinutes Int      @map("duration_minutes")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  business        Business @relation(fields: [businessId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "services_business_id_fkey")
+  durationMinutes Int                 @map("duration_minutes")
+  isActive        Boolean             @default(true) @map("is_active")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  business        Business            @relation(fields: [businessId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "services_business_id_fkey")
+  specialists     SpecialistService[]
 
+  @@unique([businessId, id], map: "services_business_id_id_key")
   @@index([businessId], map: "services_business_id_idx")
   @@map("services")
+}
+
+/// The nonblank name CHECK is maintained in migration SQL.
+model Specialist {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId String              @map("business_id") @db.Uuid
+  name       String
+  isActive   Boolean             @default(true) @map("is_active")
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  business   Business            @relation(fields: [businessId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  services   SpecialistService[]
+
+  @@unique([businessId, id], map: "specialists_business_id_id_key")
+  @@map("specialists")
+}
+
+model SpecialistService {
+  businessId   String     @map("business_id") @db.Uuid
+  specialistId String     @map("specialist_id") @db.Uuid
+  serviceId    String     @map("service_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  specialist   Specialist @relation(fields: [businessId, specialistId], references: [businessId, id], onDelete: Restrict, onUpdate: NoAction)
+  service      Service    @relation(fields: [businessId, serviceId], references: [businessId, id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([businessId, specialistId, serviceId])
+  @@index([businessId, serviceId], map: "specialist_services_business_id_service_id_idx")
+  @@map("specialist_services")
 }
