@@ -201,11 +201,12 @@ temporary schemas and never seed the application tables.
 
 ## Express application and HTTP server
 
-- `src/app.ts` creates and exports the Express application, `app`. It defines
-  request handling and registers the JSON parser, routes, and fallback handlers.
-  Importing this module does not open a network port.
-- `src/main.ts` is the process entry point. It imports `app` and calls
-  `createServer(app)`. It verifies the database connection before calling
+- `src/app.ts` exports `createApp(database)`, which creates an Express application
+  using the supplied Prisma Client. It registers JSON parsing, routes, and fallback
+  handlers. Importing it does not construct a database client or open a network port.
+  Tests supply a Prisma Client connected to an isolated schema.
+- `src/main.ts` is the process entry point. It calls `createApp(prisma)` and
+  passes the resulting application to `createServer`. It verifies the database connection before calling
   `server.listen(config.port)`, and owns shutdown of both the HTTP server and pool.
   `src/config.ts` reads and validates the port and database URL.
 
@@ -228,6 +229,47 @@ Relative imports use the emitted JavaScript file extension: `app.ts` compiles to
 `app.js`, so Node.js can resolve the module after compilation. TypeScript resolves
 the corresponding `.ts` source file during type checking, and `tsx` supports this
 import when running the source code directly.
+
+## Public service catalogue
+
+`GET /api/businesses/:businessId/services` lists active services for a business.
+This is a public customer-facing catalogue endpoint; it grants no management access.
+Future administrative endpoints must enforce authentication and business authorization.
+
+From PowerShell with the backend running and demo data seeded:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/businesses/10000000-0000-4000-8000-000000000001/services | ConvertTo-Json -Depth 4
+```
+
+The JSON envelope is `{ "services": [...] }`. Each entry contains only `id`,
+`name`, and `durationMinutes`. Services are ordered by database name ascending,
+then UUID ascending for ties. Demo data returns Beard trim (15 minutes), then
+Haircut (30 minutes); inactive Hair coloring is excluded. Query parameters do
+not enable inactive records. There is no pagination in this initial endpoint.
+
+| Result                                     | HTTP status | Body                               |
+| ------------------------------------------ | ----------- | ---------------------------------- |
+| Business has active services               | 200         | `{ "services": [...] }`            |
+| Business exists but has no active services | 200         | `{ "services": [] }`               |
+| Noncanonical/malformed UUID                | 400         | Error code `INVALID_BUSINESS_ID`   |
+| Valid UUID, business does not exist        | 404         | Error code `BUSINESS_NOT_FOUND`    |
+| Unexpected query failure                   | 500         | Error code `INTERNAL_SERVER_ERROR` |
+
+Canonical UUIDs contain five hexadecimal groups (8-4-4-4-12); either case is
+accepted without limiting UUID versions. Runtime validation occurs before the
+query: a TypeScript string alone cannot validate an HTTP parameter.
+
+`src/services/services.routes.ts` handles HTTP validation and status codes.
+`src/services/services.repository.ts` performs the Prisma lookup and selects only
+public fields from active services belonging to the specified business. It returns
+null for a missing business and an array (possibly empty) for an existing one.
+Express 5 forwards rejected async handlers to the final error middleware.
+The endpoint does not change bookings, availability, or any database rows.
+
+Integration tests use a temporary schema and real HTTP requests to check filtering,
+business scoping, stable ordering, empty lists, UUID validation, missing businesses,
+and generic error responses/logs after a real database query failure.
 
 ## JSON requests and error handling
 
@@ -267,8 +309,8 @@ Errors use a consistent response structure:
 
 Malformed JSON is rejected before route matching, so it can produce `400` even
 when sent to an unknown route. The parser accepts JSON objects and arrays by
-default; standalone primitives are rejected. The server logs unexpected errors,
-but responses do not expose stack traces or internal error messages. If a response
+default; standalone primitives are rejected. Unexpected request failures produce a generic log message and response, without
+Prisma/driver details, SQL parameters, or stack traces that may contain row values. If a response
 has already started, the error is forwarded to Express's default error handler.
 
 To check a missing route and malformed JSON from PowerShell (using curl.exe):

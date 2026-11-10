@@ -31,7 +31,8 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, req, res, next
     return;
   }
 
-  console.error('Unhandled request error:', error instanceof Error ? error.stack : 'Unknown error');
+  // Prisma and driver error details can contain SQL parameters and connection data.
+  console.error('Unhandled request error.');
 
   res.status(500).json({
     error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred.' },

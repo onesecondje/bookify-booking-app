@@ -1,10 +1,10 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { app } from './app.js';
+import { createApp } from './app.js';
 import { config } from './config.js';
 import { closeDatabase, pool, prisma } from './db.js';
 
-const server = createServer(app);
+const server = createServer(createApp(prisma));
 let shuttingDown = false;
 
 function errorCode(error: unknown): string {

@@ -138,3 +138,6 @@ procedure before using Prisma deployment.
 
 Optionally populate the development database with `pnpm -C backend db:seed`.
 See the backend README for demo IDs and repeat-run behavior.
+
+The public API now exposes `GET /api/businesses/:businessId/services` for active
+services. See the backend README for response fields and error behavior.
