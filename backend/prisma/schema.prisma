@@ -19,17 +19,6 @@ model Business {
   @@map("businesses")
 }
 
-// Temporary introspection of the legacy history; retire it during baselining.
-// @@ignore excludes the client API, not Prisma Migrate's schema management.
-model LegacyMigration {
-  filename  String   @id
-  checksum  String
-  appliedAt DateTime @default(now()) @map("applied_at") @db.Timestamptz(6)
-
-  @@map("schema_migrations")
-  @@ignore
-}
-
 /// This table contains check constraints and requires additional setup for migrations
 model Service {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

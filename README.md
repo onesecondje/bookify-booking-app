@@ -43,12 +43,12 @@ database. `--wait` waits for the health check to succeed. The port is published 
 
 Default connection settings:
 
-| Setting | Value |
-| --- | --- |
-| Host | `127.0.0.1` |
-| Port | `5432` (or `POSTGRES_PORT` from `.env`) |
-| Database | `bookify` (or `POSTGRES_DB`) |
-| User | `bookify` (or `POSTGRES_USER`) |
+| Setting  | Value                                     |
+| -------- | ----------------------------------------- |
+| Host     | `127.0.0.1`                               |
+| Port     | `5432` (or `POSTGRES_PORT` from `.env`)   |
+| Database | `bookify` (or `POSTGRES_DB`)              |
+| User     | `bookify` (or `POSTGRES_USER`)            |
 | Password | `POSTGRES_PASSWORD` from the local `.env` |
 
 These settings are for local development. The image creates its initial user with
@@ -127,7 +127,11 @@ After configuring `backend/.env` and installing backend dependencies, run:
 pnpm -C backend db:migrate
 ```
 
-This creates the `businesses` and `services` tables and records the migration in
-`schema_migrations`. Re-running the command skips already applied migrations.
-The API does not run migrations automatically. See [migration documentation](backend/migrations/README.md)
+Prisma Migrate creates the `businesses` and `services` tables in a new database
+and records migration history in `_prisma_migrations`. Re-running the command skips already applied migrations.
+The API does not run migrations automatically. See [migration documentation](backend/prisma/migrations/README.md)
 for the schema and how to add future changes.
+
+Run `pnpm -C backend db:generate` after installing backend dependencies. Existing
+databases created by the previous SQL runner require the documented baseline
+procedure before using Prisma deployment.
