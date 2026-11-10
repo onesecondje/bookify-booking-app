@@ -11,6 +11,7 @@
     "dev": "tsx --env-file-if-exists=.env src/main.ts",
     "db:migrate": "prisma migrate deploy",
     "db:status": "prisma migrate status",
+    "db:seed": "prisma db seed",
     "db:introspect": "prisma db pull",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",

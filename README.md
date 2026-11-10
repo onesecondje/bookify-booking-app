@@ -11,8 +11,8 @@ A Booksy-style application for booking service appointments.
 PostgreSQL runs in Docker. The frontend and backend currently run directly on
 the host. The backend connects to PostgreSQL using Prisma Client with a shared `pg` pool, checks the connection
 before accepting HTTP requests, and closes its pool during graceful shutdown.
-The initial migration defines businesses and their services. No booking endpoints
-or demonstration data have been added yet.
+The initial migration defines businesses and their services. An explicit demo seed
+adds one business and three services. No booking endpoints have been added yet.
 
 ## Requirements
 
@@ -135,3 +135,6 @@ for the schema and how to add future changes.
 Run `pnpm -C backend db:generate` after installing backend dependencies. Existing
 databases created by the previous SQL runner require the documented baseline
 procedure before using Prisma deployment.
+
+Optionally populate the development database with `pnpm -C backend db:seed`.
+See the backend README for demo IDs and repeat-run behavior.

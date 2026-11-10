@@ -160,6 +160,45 @@ are explicitly included in baseline SQL because Prisma schema cannot fully expre
 See [migration documentation](prisma/migrations/README.md) for baseline adoption,
 future migrations, transaction behavior, and integration tests.
 
+## Demonstration data
+
+After migrations and client generation, populate the local development database:
+
+```sh
+pnpm -C backend db:seed
+```
+
+Prisma's `migrations.seed` configuration runs `src/seed.ts`, which uses the shared
+Prisma Client, calls `seedDemoData` from `src/demo-data.ts`, and closes database
+resources. Seeding is explicit; API startup and migration deployment do not run it.
+
+The demo business is **Bookify Demo Studio**, time zone **Europe/Warsaw**, with ID
+`10000000-0000-4000-8000-000000000001`. The small dataset does not limit how many
+businesses the application can support.
+
+| Service       | Duration (minutes) | Active |
+| ------------- | ------------------ | ------ |
+| Haircut       | 30                 | Yes    |
+| Beard trim    | 15                 | Yes    |
+| Hair coloring | 90                 | No     |
+
+Each demo record has a stable UUID. Upserts identify records by that UUID, so
+renaming one does not create a duplicate on the next seed. Repeated runs restore
+the defined demo names, time zone, durations, business links, and active flags.
+Creation timestamps are preserved. Only those fixed demo IDs are updated; other
+records are not removed or modified. Run this against a development database;
+manual edits to these demo records are deliberately overwritten on the next run.
+The script does not prune records removed from its dataset definition.
+
+All upserts share one Prisma transaction: a failure rolls back that run's changes.
+Logs omit driver error details and row values. Schema defaults still generate IDs
+for normal inserts; fixed seed IDs require no migration. No specialists, schedules,
+bookings, or contact data are seeded because their models do not exist yet.
+
+Integration tests verify repeatability, preservation of unrelated records and
+creation times, and rollback when a later service insert fails. Tests use isolated
+temporary schemas and never seed the application tables.
+
 ## Express application and HTTP server
 
 - `src/app.ts` creates and exports the Express application, `app`. It defines
