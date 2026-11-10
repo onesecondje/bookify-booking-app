@@ -4,7 +4,7 @@ A Booksy-style application for booking service appointments.
 
 ## Project structure
 
-- `frontend/`: Next.js and React application (currently the starter page).
+- `frontend/`: Next.js and React service catalogue. See [frontend documentation](frontend/README.md).
 - `backend/`: Express and TypeScript API. See [backend documentation](backend/README.md).
 - `compose.yaml`: local PostgreSQL development environment.
 
@@ -141,3 +141,6 @@ See the backend README for demo IDs and repeat-run behavior.
 
 The public API now exposes `GET /api/businesses/:businessId/services` for active
 services. See the backend README for response fields and error behavior.
+
+The frontend home page now reads that API on the Next.js server and displays the
+service catalogue. See the frontend README for environment settings and startup.

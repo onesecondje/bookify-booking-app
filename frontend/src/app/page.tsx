@@ -1,66 +1,98 @@
-import Image from 'next/image';
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { connection } from 'next/server';
+import { getBusinessServices } from '@/lib/services';
 import styles from './page.module.css';
+
+async function Services() {
+  // Fetch at request time, so building the frontend does not require a running API.
+  await connection();
+  const result = await getBusinessServices();
+
+  if (result.status === 'unavailable') {
+    return (
+      <div className={styles.state} role="status">
+        <h3>Services are temporarily unavailable</h3>
+        <p>We couldn’t load the services. Please try again in a moment.</p>
+        <form action="/" method="get">
+          <button className={styles.retry} type="submit">
+            Try again
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  if (result.status === 'not-found') {
+    return (
+      <div className={styles.state} role="status">
+        <h3>Business not found</h3>
+        <p>This business is currently unavailable.</p>
+      </div>
+    );
+  }
+
+  if (result.services.length === 0) {
+    return (
+      <div className={styles.state} role="status">
+        <h3>No services available yet</h3>
+        <p>Please check back later for available services.</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <p className={styles.count}>{result.services.length} available services</p>
+      <ul className={styles.list}>
+        {result.services.map((service) => (
+          <li className={styles.service} key={service.id}>
+            <h3>{service.name}</h3>
+            <p>
+              <span className={styles.clock} aria-hidden="true">
+                ◷
+              </span>{' '}
+              {service.durationMinutes} min
+            </p>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 export default function Home() {
   return (
     <div className={styles.page}>
+      <header className={styles.header}>
+        <Link className={styles.brand} href="/" aria-label="Bookify home">
+          bookify<span aria-hidden="true">.</span>
+        </Link>
+        <span className={styles.headerLabel}>A little time for you</span>
+      </header>
       <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
         <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{' '}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{' '}
-            or the{' '}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{' '}
-            center.
-          </p>
+          <p className={styles.eyebrow}>Service catalogue</p>
+          <h1>Make time for yourself.</h1>
+          <p className={styles.description}>Explore our services and find the time you need.</p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <section className={styles.catalogue} aria-labelledby="services-title">
+          <div className={styles.sectionHeading}>
+            <h2 id="services-title">Our services</h2>
+            <span>Duration at a glance</span>
+          </div>
+          <Suspense
+            fallback={
+              <p className={styles.state} role="status">
+                Loading services…
+              </p>
+            }
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+            <Services />
+          </Suspense>
+        </section>
       </main>
+      <footer className={styles.footer}>Bookify · Service appointments, made simple.</footer>
     </div>
   );
 }

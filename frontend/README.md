@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bookify Frontend
 
-## Getting Started
+Next.js 16 App Router, React 19, TypeScript, and CSS Modules. The home page renders
+a public service catalogue from the Express API. Booking and service selection
+are not implemented yet.
 
-First, run the development server:
+## Local development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Use Node.js 24 or newer and pnpm (10.29.1 was used for the current lockfile).
+Run commands from the repository root:
+
+```sh
+pnpm -C frontend install
+pnpm -C frontend dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+First prepare and start the backend in a separate terminal:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+docker compose up -d --wait postgres
+pnpm -C backend db:generate
+pnpm -C backend db:migrate
+pnpm -C backend db:seed
+pnpm -C backend dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000. Demo data displays Beard trim (15 minutes) and Haircut
+(30 minutes). Inactive Hair coloring is excluded by the API.
 
-## Learn More
+## Server environment
 
-To learn more about Next.js, take a look at the following resources:
+The defaults work with the local seeded backend. Optionally copy .env.example to
+.env.local in frontend (preserve any existing file), then change:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable            | Default                              | Purpose                                                |
+| ------------------- | ------------------------------------ | ------------------------------------------------------ |
+| BACKEND_API_URL     | http://127.0.0.1:4000                | Backend origin reachable from the Next.js server       |
+| BOOKIFY_BUSINESS_ID | 10000000-0000-4000-8000-000000000001 | Business whose active services appear on the home page |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Restart Next.js after changing environment configuration. These are server variables,
+not NEXT_PUBLIC variables. The three environment files have separate consumers:
+root .env for Compose, backend/.env for Express, frontend/.env.local for Next.js.
+In deployment, use an API address reachable from the Next.js host; loopback is
+only correct when both processes run on the same host/network namespace.
 
-## Deploy on Vercel
+## Data flow and states
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The browser requests the home page from Next.js. Its async Services Server
+Component calls getBusinessServices in src/lib/services.ts, which fetches
+GET /api/businesses/:businessId/services from Express. Express owns Prisma queries
+and business rules; Next.js does not connect to PostgreSQL.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The data module delegates server environment validation to src/lib/config.ts and
+response parsing/types to src/lib/services.schema.ts. Configuration is read inside
+the request function, so invalid settings still produce the catalogue error state.
+No generic HTTP client is introduced.
+
+The server-only marker prevents importing the data module into a Client Component.
+The API origin is not passed to browser code. This server-to-server request needs
+no browser CORS configuration. No proxy route or client data-fetching library is used.
+
+The component calls connection() inside Suspense to defer data loading until an
+incoming request; production builds do not need the API running. Suspense renders
+a loading message while the service list is pending. Fetch uses cache: no-store
+and a five-second timeout. Reloading or submitting Try again performs a new request.
+
+The response JSON is validated at runtime before rendering. TypeScript alone cannot
+validate an external HTTP response. Empty lists, missing businesses, non-OK responses,
+invalid payloads, configuration errors, and timeouts have explicit UI states. Failures
+show a generic message without exposing backend diagnostics. Error states are page
+content with HTTP 200; this initial catalogue does not translate backend status codes
+into the document's HTTP status.
+
+Layout metadata identifies Bookify. CSS Modules provide responsive catalogue styles;
+the system font stack avoids external font downloads during builds.
+
+## Verification
+
+```sh
+pnpm -C frontend lint
+pnpm -C frontend exec tsc --noEmit
+pnpm -C frontend build
+```
+
+Run pnpm -C frontend start after building to test the production server. If pnpm is
+unavailable or Corepack selects a different major, run corepack pnpm@10.29.1 with
+the same arguments from this directory.
+
+No frontend test script or browser automation framework is configured. The initial
+integration was checked against production HTML using the real seeded API, plus a
+local HTTP fixture for empty, missing, malformed, failed, and timed-out responses,
+and recovery on the next request. Visual browser checks remain manual.
