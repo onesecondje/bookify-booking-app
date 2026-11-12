@@ -2,8 +2,8 @@
 
 Next.js 16 App Router, React 19, TypeScript, and CSS Modules. The home page renders
 a public service catalogue from the Express API. Users can select a service through
-the URL and view its active specialists. Specialist selection and booking are not
-implemented yet.
+the URL, choose an active assigned specialist and review their selection. Booking
+is not implemented yet.
 
 ## Local development
 
@@ -107,8 +107,18 @@ Uppercase UUIDs are accepted. Clear selection returns to `/`.
 `src/app/specialists.tsx` loads and displays specialists in a nested Suspense boundary
 keyed by service ID. Loading, empty, missing-business, unavailable-service and failure
 states are handled. The retry GET form retains the selected service ID. No browser
-fetch to Express or global client state is introduced. Selecting a specialist and
-viewing appointment availability remain future steps.
+fetch to Express or global client state is introduced.
+
+Specialist links add `specialistId` to the URL while retaining `serviceId`. A single
+canonical specialist UUID must match an entry in the freshly loaded specialist list
+before a summary is displayed. Repeated/malformed IDs and unavailable specialists
+show explicit states. Uppercase UUIDs are accepted. A specialist ID without a service
+does not produce a selection. Even a single specialist requires explicit selection.
+
+The summary shows service, duration and specialist, and states that no appointment
+has been booked. Clearing the specialist retains the service. Changing the service
+clears the specialist, and retrying a failed load retains a well-formed specialist ID
+for revalidation. Schedules, appointment availability and booking remain future work.
 
 ## Verification
 

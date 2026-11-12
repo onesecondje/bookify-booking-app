@@ -151,6 +151,24 @@ a.service:hover {
 .state p {
   color: #5f6e62;
 }
+.summary {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+.summary div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.summary dt {
+  color: #5f6e62;
+}
+.summary dd {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 .retry {
   border: 0;
   cursor: pointer;

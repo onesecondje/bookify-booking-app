@@ -150,4 +150,6 @@ constraints preventing assignments across businesses. The explicit seed includes
 two specialists and three assignments. The public API lists active assigned specialists
 at `GET /api/businesses/:businessId/services/:serviceId/specialists`.
 The frontend supports URL-based service selection and displays active specialists
-for that service. Specialist selection in the UI is next.
+for that service. Users can select a specialist through the URL and review the
+service, duration and specialist together. Schedules and appointment availability
+are not implemented yet.

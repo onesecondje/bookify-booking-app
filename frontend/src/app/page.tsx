@@ -12,7 +12,7 @@ async function Services({ searchParams }: { searchParams: SearchParams }) {
   // Fetch at request time, so building the frontend does not require a running API.
   await connection();
   const result = await getBusinessServices();
-  const { serviceId } = await searchParams;
+  const { serviceId, specialistId } = await searchParams;
 
   if (result.status === 'unavailable') {
     return (
@@ -98,14 +98,14 @@ async function Services({ searchParams }: { searchParams: SearchParams }) {
           </div>
         ) : (
           <Suspense
-            key={selectedService.id}
+            key={`${selectedService.id}:${JSON.stringify(specialistId)}`}
             fallback={
               <p className={styles.state} role="status">
                 Loading specialists…
               </p>
             }
           >
-            <Specialists service={selectedService} />
+            <Specialists service={selectedService} specialistId={specialistId} />
           </Suspense>
         )}
       </section>
