@@ -96,6 +96,27 @@
   background: #fff;
   border: 1px solid #dce3da;
   border-radius: 14px;
+  flex-wrap: wrap;
+}
+a.service:hover {
+  border-color: #62824f;
+}
+.selectedService {
+  border-color: #294a37;
+  box-shadow: inset 0 0 0 1px #294a37;
+  background: #f0f4ec;
+}
+.selectionLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #294a37;
+}
+.specialists {
+  margin-top: 40px;
+}
+.sectionHeading a {
+  font-size: 14px;
+  text-decoration: underline;
 }
 .service h3 {
   font-size: 18px;

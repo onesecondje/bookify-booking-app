@@ -149,4 +149,5 @@ The database now includes specialists and their service assignments, with databa
 constraints preventing assignments across businesses. The explicit seed includes
 two specialists and three assignments. The public API lists active assigned specialists
 at `GET /api/businesses/:businessId/services/:serviceId/specialists`.
-Connecting service and specialist selection in the UI is next.
+The frontend supports URL-based service selection and displays active specialists
+for that service. Specialist selection in the UI is next.

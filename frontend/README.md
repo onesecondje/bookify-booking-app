@@ -1,8 +1,9 @@
 # Bookify Frontend
 
 Next.js 16 App Router, React 19, TypeScript, and CSS Modules. The home page renders
-a public service catalogue from the Express API. Booking and service selection
-are not implemented yet.
+a public service catalogue from the Express API. Users can select a service through
+the URL and view its active specialists. Specialist selection and booking are not
+implemented yet.
 
 ## Local development
 
@@ -89,6 +90,25 @@ produce an unavailable result without logging response details.
 
 Loader outcomes use the frontend-local `SpecialistsLoadStatus` enum in `src/enums`.
 Backend modules are not imported into the frontend.
+
+## Service selection
+
+Service links navigate to `/?serviceId=<uuid>` using Next.js navigation. The URL is
+the source of selection state, so reloads and browser back/forward retain the selection.
+Links contain only the new service ID, dropping any previous specialist selection.
+The selected service is highlighted visually and marked with `aria-current`.
+
+The Services Server Component reads asynchronous page search parameters inside
+Suspense. It validates a single canonical service UUID and checks that it belongs
+to the current active catalogue before loading specialists. Repeated parameters,
+empty/malformed UUIDs and missing/inactive services show explicit selection states.
+Uppercase UUIDs are accepted. Clear selection returns to `/`.
+
+`src/app/specialists.tsx` loads and displays specialists in a nested Suspense boundary
+keyed by service ID. Loading, empty, missing-business, unavailable-service and failure
+states are handled. The retry GET form retains the selected service ID. No browser
+fetch to Express or global client state is introduced. Selecting a specialist and
+viewing appointment availability remain future steps.
 
 ## Verification
 
