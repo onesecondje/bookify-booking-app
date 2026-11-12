@@ -1,3 +1,5 @@
+import { ServiceSpecialistsStatus } from './specialists.types.js';
+import { ApiErrorCode } from '../http/api-error-code.js';
 import { Router } from 'express';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { isUuid } from '../validation/uuid.js';
@@ -10,27 +12,30 @@ export function createSpecialistsRouter(database: PrismaClient): Router {
     const { businessId, serviceId } = req.params;
     if (!isUuid(businessId)) {
       res.status(400).json({
-        error: { code: 'INVALID_BUSINESS_ID', message: 'businessId must be a valid UUID.' },
+        error: {
+          code: ApiErrorCode.InvalidBusinessId,
+          message: 'businessId must be a valid UUID.',
+        },
       });
       return;
     }
     if (!isUuid(serviceId)) {
       res.status(400).json({
-        error: { code: 'INVALID_SERVICE_ID', message: 'serviceId must be a valid UUID.' },
+        error: { code: ApiErrorCode.InvalidServiceId, message: 'serviceId must be a valid UUID.' },
       });
       return;
     }
 
     const result = await findServiceSpecialists(database, businessId, serviceId);
-    if (result.status === 'business-not-found') {
+    if (result.status === ServiceSpecialistsStatus.BusinessNotFound) {
       res.status(404).json({
-        error: { code: 'BUSINESS_NOT_FOUND', message: 'Business not found.' },
+        error: { code: ApiErrorCode.BusinessNotFound, message: 'Business not found.' },
       });
       return;
     }
-    if (result.status === 'service-not-found') {
+    if (result.status === ServiceSpecialistsStatus.ServiceNotFound) {
       res.status(404).json({
-        error: { code: 'SERVICE_NOT_FOUND', message: 'Service not found.' },
+        error: { code: ApiErrorCode.ServiceNotFound, message: 'Service not found.' },
       });
       return;
     }

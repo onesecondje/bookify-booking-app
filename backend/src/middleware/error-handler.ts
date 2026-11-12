@@ -1,3 +1,4 @@
+import { ApiErrorCode } from '../http/api-error-code.js';
 import type { ErrorRequestHandler } from 'express';
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, req, res, next) => {
@@ -12,21 +13,27 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, req, res, next
 
   if (errorType === 'entity.parse.failed') {
     res.status(400).json({
-      error: { code: 'INVALID_JSON', message: 'Request body must contain valid JSON.' },
+      error: { code: ApiErrorCode.InvalidJson, message: 'Request body must contain valid JSON.' },
     });
     return;
   }
 
   if (errorType === 'entity.too.large') {
     res.status(413).json({
-      error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body exceeds the 100kb limit.' },
+      error: {
+        code: ApiErrorCode.PayloadTooLarge,
+        message: 'Request body exceeds the 100kb limit.',
+      },
     });
     return;
   }
 
   if (errorType === 'charset.unsupported' || errorType === 'encoding.unsupported') {
     res.status(415).json({
-      error: { code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Request body encoding is not supported.' },
+      error: {
+        code: ApiErrorCode.UnsupportedMediaType,
+        message: 'Request body encoding is not supported.',
+      },
     });
     return;
   }
@@ -35,6 +42,6 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, req, res, next
   console.error('Unhandled request error.');
 
   res.status(500).json({
-    error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred.' },
+    error: { code: ApiErrorCode.InternalServerError, message: 'An unexpected error occurred.' },
   });
 };

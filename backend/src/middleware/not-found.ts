@@ -1,9 +1,10 @@
+import { ApiErrorCode } from '../http/api-error-code.js';
 import type { RequestHandler } from 'express';
 
 export const notFound: RequestHandler = (req, res) => {
   res.status(404).json({
     error: {
-      code: 'NOT_FOUND',
+      code: ApiErrorCode.NotFound,
       message: 'Route not found.',
     },
   });

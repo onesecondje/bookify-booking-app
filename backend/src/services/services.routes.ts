@@ -1,3 +1,4 @@
+import { ApiErrorCode } from '../http/api-error-code.js';
 import { Router } from 'express';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { findBusinessServices } from './services.repository.js';
@@ -10,7 +11,10 @@ export function createServicesRouter(database: PrismaClient): Router {
     const { businessId } = req.params;
     if (!isUuid(businessId)) {
       res.status(400).json({
-        error: { code: 'INVALID_BUSINESS_ID', message: 'businessId must be a valid UUID.' },
+        error: {
+          code: ApiErrorCode.InvalidBusinessId,
+          message: 'businessId must be a valid UUID.',
+        },
       });
       return;
     }
@@ -18,7 +22,7 @@ export function createServicesRouter(database: PrismaClient): Router {
     const services = await findBusinessServices(database, businessId);
     if (services === null) {
       res.status(404).json({
-        error: { code: 'BUSINESS_NOT_FOUND', message: 'Business not found.' },
+        error: { code: ApiErrorCode.BusinessNotFound, message: 'Business not found.' },
       });
       return;
     }

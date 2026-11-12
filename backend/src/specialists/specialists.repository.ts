@@ -1,3 +1,4 @@
+import { ServiceSpecialistsStatus } from './specialists.types.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 
 export async function findServiceSpecialists(
@@ -21,13 +22,13 @@ export async function findServiceSpecialists(
     },
   });
 
-  if (business === null) return { status: 'business-not-found' } as const;
+  if (business === null) return { status: ServiceSpecialistsStatus.BusinessNotFound } as const;
 
   const service = business.services[0];
-  if (service === undefined) return { status: 'service-not-found' } as const;
+  if (service === undefined) return { status: ServiceSpecialistsStatus.ServiceNotFound } as const;
 
   return {
-    status: 'ready',
+    status: ServiceSpecialistsStatus.Ready,
     specialists: service.specialists.map((assignment) => assignment.specialist),
   } as const;
 }

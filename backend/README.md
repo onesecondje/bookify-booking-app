@@ -339,6 +339,12 @@ fields. Its tagged result distinguishes a missing business, a missing service,
 and a successful list. `src/specialists/specialists.routes.ts` maps those outcomes
 to HTTP responses. Both catalogue routes use `src/validation/uuid.ts`.
 
+Repository outcomes use the feature-local `ServiceSpecialistsStatus` enum in
+`src/specialists/specialists.types.ts`. Public error codes use `ApiErrorCode` in
+`src/http/api-error-code.ts` across routes and fallback middleware. Their string
+values preserve the JSON contract. Repository outcomes carry no HTTP status codes;
+routes remain responsible for mapping them to HTTP responses.
+
 Real HTTP/database integration tests use an isolated schema to cover scoping,
 assignments, active flags, deactivation, public fields, ordering, empty results,
 UUID validation, missing resources, and generic database failures.
