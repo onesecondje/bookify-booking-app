@@ -1,4 +1,4 @@
-import { ApiErrorCode } from '../http/api-error-code.js';
+import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import type { ErrorRequestHandler } from 'express';
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, req, res, next) => {

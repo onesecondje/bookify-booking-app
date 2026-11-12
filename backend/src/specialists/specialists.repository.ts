@@ -1,4 +1,4 @@
-import { ServiceSpecialistsStatus } from './specialists.types.js';
+import { ServiceSpecialistsStatus } from '../enums/service-specialists-status.enum.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 
 export async function findServiceSpecialists(

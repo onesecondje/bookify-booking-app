@@ -1,4 +1,4 @@
-import { ApiErrorCode } from '../http/api-error-code.js';
+import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import type { RequestHandler } from 'express';
 
 export const notFound: RequestHandler = (req, res) => {

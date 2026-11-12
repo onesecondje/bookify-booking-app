@@ -108,7 +108,7 @@ Current limits:
 Startup in `src/main.ts` follows this order:
 
 ```text
-Validate configuration → SELECT 1 → Start listening for HTTP requests
+Validate configuration â†’ SELECT 1 â†’ Start listening for HTTP requests
 ```
 
 If the connection check or HTTP startup fails, the backend closes its resources
@@ -240,9 +240,9 @@ temporary schemas and never seed the application tables.
 Request flow:
 
 ```text
-Client → HTTP server → JSON parser → Route handler → Response to client
-                                  → Not-found handler (no matching route)
-                     → Error handler (parsing or request processing fails)
+Client â†’ HTTP server â†’ JSON parser â†’ Route handler â†’ Response to client
+                                  â†’ Not-found handler (no matching route)
+                     â†’ Error handler (parsing or request processing fails)
 ```
 
 This separation allows future tests to import the application without
@@ -339,9 +339,9 @@ fields. Its tagged result distinguishes a missing business, a missing service,
 and a successful list. `src/specialists/specialists.routes.ts` maps those outcomes
 to HTTP responses. Both catalogue routes use `src/validation/uuid.ts`.
 
-Repository outcomes use the feature-local `ServiceSpecialistsStatus` enum in
-`src/specialists/specialists.types.ts`. Public error codes use `ApiErrorCode` in
-`src/http/api-error-code.ts` across routes and fallback middleware. Their string
+Repository outcomes use the `ServiceSpecialistsStatus` enum in
+`src/enums/service-specialists-status.enum.ts`. Public error codes use `ApiErrorCode` in
+`src/enums/api-error-code.enum.ts` across routes and fallback middleware. Their string
 values preserve the JSON contract. Repository outcomes carry no HTTP status codes;
 routes remain responsible for mapping them to HTTP responses.
 

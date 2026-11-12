@@ -1,5 +1,5 @@
-import { ServiceSpecialistsStatus } from './specialists.types.js';
-import { ApiErrorCode } from '../http/api-error-code.js';
+import { ServiceSpecialistsStatus } from '../enums/service-specialists-status.enum.js';
+import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import { Router } from 'express';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { isUuid } from '../validation/uuid.js';

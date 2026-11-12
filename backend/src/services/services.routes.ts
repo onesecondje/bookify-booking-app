@@ -1,4 +1,4 @@
-import { ApiErrorCode } from '../http/api-error-code.js';
+import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import { Router } from 'express';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { findBusinessServices } from './services.repository.js';
