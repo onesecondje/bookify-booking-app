@@ -74,6 +74,22 @@ into the document's HTTP status.
 Layout metadata identifies Bookify. CSS Modules provide responsive catalogue styles;
 the system font stack avoids external font downloads during builds.
 
+## Specialist data loading
+
+`src/lib/specialists.ts` provides the server-only `getServiceSpecialists(serviceId)`
+loader for the configured business. It validates the service UUID before fetching
+the public specialists endpoint, reuses the catalogue configuration, disables
+caching, and applies a five-second timeout.
+
+`src/lib/specialists.schema.ts` validates responses from unknown JSON and retains
+only specialist IDs and names. Empty lists are successful results. Validated API
+404 codes distinguish missing businesses from missing/inactive services; unexpected
+404 bodies, invalid JSON, other HTTP errors, configuration errors and network failures
+produce an unavailable result without logging response details.
+
+Loader outcomes use the frontend-local `SpecialistsLoadStatus` enum in `src/enums`.
+Backend modules are not imported into the frontend.
+
 ## Verification
 
 ```sh
