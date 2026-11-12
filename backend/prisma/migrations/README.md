@@ -142,8 +142,9 @@ references, null/blank values, delete/update restrictions, indexes, and preserva
 of existing data during baseline-plus-upgrade deployment.
 
 The explicit demo seed now adds Alice and Alex and three service assignments; see
-the backend README. No specialist API or UI is implemented yet. The public services
-endpoint remains unchanged. Next: a public specialist lookup for a selected service.
+the backend README. A public specialist lookup for a selected active service is
+implemented; it filters inactive specialists without deleting assignments. The public
+services endpoint retains its contract. Specialist selection UI is not implemented yet.
 
 ## Integration tests
 

@@ -147,4 +147,6 @@ service catalogue. See the frontend README for environment settings and startup.
 
 The database now includes specialists and their service assignments, with database
 constraints preventing assignments across businesses. The explicit seed includes
-two specialists and three assignments; specialist public API integration is next.
+two specialists and three assignments. The public API lists active assigned specialists
+at `GET /api/businesses/:businessId/services/:serviceId/specialists`.
+Connecting service and specialist selection in the UI is next.

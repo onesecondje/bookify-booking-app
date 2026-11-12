@@ -4,6 +4,7 @@ import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { createServicesRouter } from './services/services.routes.js';
+import { createSpecialistsRouter } from './specialists/specialists.routes.js';
 
 // Configure request handling without opening a network port.
 export function createApp(database: PrismaClient): Express {
@@ -16,6 +17,7 @@ export function createApp(database: PrismaClient): Express {
   });
 
   app.use('/api', createServicesRouter(database));
+  app.use('/api', createSpecialistsRouter(database));
 
   // Register fallback handlers after all routes; the error handler must be last.
   app.use(notFound);

@@ -167,8 +167,9 @@ belong to a business; explicit service assignments support many-to-many relation
 Composite foreign keys prevent cross-business assignments, and a composite primary
 key prevents duplicates. Names must be nonblank; active defaults to true. Referenced
 specialists/services cannot be deleted while assignments exist. See the migration
-documentation for key/index details. Specialist endpoints and UI are not implemented yet; the explicit demo seed
-includes specialists and service assignments.
+documentation for key/index details. A public specialist endpoint is available for
+a selected service (see below). Specialist selection UI is not implemented yet;
+the explicit demo seed includes specialists and service assignments.
 
 ## Demonstration data
 
@@ -296,6 +297,51 @@ The endpoint does not change bookings, availability, or any database rows.
 Integration tests use a temporary schema and real HTTP requests to check filtering,
 business scoping, stable ordering, empty lists, UUID validation, missing businesses,
 and generic error responses/logs after a real database query failure.
+
+## Public specialists for a service
+
+`GET /api/businesses/:businessId/services/:serviceId/specialists` returns
+`{ "specialists": [{ "id": "...", "name": "..." }] }`.
+Only active specialists assigned to the requested active service within the
+requested business are included. Results are ordered by specialist name ascending,
+then UUID ascending for ties. Query parameters cannot enable inactive records.
+There is no pagination in this initial endpoint.
+
+| Result                                             | HTTP status | Error code or body         |
+| -------------------------------------------------- | ----------- | -------------------------- |
+| Active service with matching specialists           | 200         | `{ "specialists": [...] }` |
+| Active service with no active assigned specialists | 200         | `{ "specialists": [] }`    |
+| Malformed business UUID                            | 400         | `INVALID_BUSINESS_ID`      |
+| Malformed service UUID                             | 400         | `INVALID_SERVICE_ID`       |
+| Missing business                                   | 404         | `BUSINESS_NOT_FOUND`       |
+| Missing, inactive, or other-business service       | 404         | `SERVICE_NOT_FOUND`        |
+| Unexpected query failure                           | 500         | `INTERNAL_SERVER_ERROR`    |
+
+Both UUIDs are validated before database access, business UUID first. Validation
+accepts the same canonical format as the services endpoint, including uppercase.
+After validation, a missing business takes precedence over a missing service.
+Errors use the existing `{ "error": { "code": "...", "message": "..." } }` format.
+
+For the seeded Haircut service:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/businesses/10000000-0000-4000-8000-000000000001/services/20000000-0000-4000-8000-000000000001/specialists | ConvertTo-Json -Depth 4
+```
+
+The seed defines Alex and Alice for Haircut, in that response order, and Alice
+for Beard trim. These assignments describe who provides a service; they do not
+establish working hours or available appointment times. This public read endpoint
+grants no management access and changes no database rows.
+
+`src/specialists/specialists.repository.ts` queries the business and its matching
+active service, then filters assignments by active specialist and selects public
+fields. Its tagged result distinguishes a missing business, a missing service,
+and a successful list. `src/specialists/specialists.routes.ts` maps those outcomes
+to HTTP responses. Both catalogue routes use `src/validation/uuid.ts`.
+
+Real HTTP/database integration tests use an isolated schema to cover scoping,
+assignments, active flags, deactivation, public fields, ordering, empty results,
+UUID validation, missing resources, and generic database failures.
 
 ## JSON requests and error handling
 
