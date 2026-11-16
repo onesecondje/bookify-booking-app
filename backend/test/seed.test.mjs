@@ -12,6 +12,7 @@ import {
   demoBusiness,
   demoServices,
   demoSpecialists,
+  demoWorkingPeriods,
   seedDemoData,
 } from '../src/demo-data.ts';
 
@@ -39,6 +40,15 @@ async function withSeedDatabase(check) {
       await readFile(
         new URL(
           '../prisma/migrations/20261110000100_add_specialists_and_service_assignments/migration.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
+    await pool.query(
+      await readFile(
+        new URL(
+          '../prisma/migrations/20261112000100_add_specialist_working_periods/migration.sql',
           import.meta.url,
         ),
         'utf8',
@@ -214,6 +224,131 @@ test('an assignment failure rolls back business, services, specialists, and earl
     assert.equal(await prisma.business.count(), 0);
     assert.equal(await prisma.service.count(), 0);
     assert.equal(await prisma.specialist.count(), 0);
+    assert.equal(await prisma.specialistService.count(), 0);
+  });
+});
+
+test('seed restores working periods by stable ID and preserves timestamps and extra periods', async () => {
+  await withSeedDatabase(async (prisma) => {
+    await seedDemoData(prisma);
+    const before = await prisma.specialistWorkingPeriod.findMany({ orderBy: { id: 'asc' } });
+    assert.equal(before.length, 15);
+    assert.deepEqual(
+      before.map(({ id, specialistId, weekday, startMinute, endMinute }) => ({
+        id,
+        specialistId,
+        weekday,
+        startMinute,
+        endMinute,
+      })),
+      [...demoWorkingPeriods].sort((a, b) => a.id.localeCompare(b.id)),
+    );
+    assert.equal(before.filter((p) => p.weekday >= 6).length, 0);
+    const extra = await prisma.specialistWorkingPeriod.create({
+      data: {
+        businessId: demoBusiness.id,
+        specialistId: demoSpecialists[0].id,
+        weekday: 6,
+        startMinute: 540,
+        endMinute: 600,
+      },
+    });
+    const otherBusiness = await prisma.business.create({
+      data: { name: 'Other studio', timeZone: 'Europe/Warsaw' },
+    });
+    const otherSpecialist = await prisma.specialist.create({
+      data: { businessId: otherBusiness.id, name: 'Other specialist' },
+    });
+    const unrelated = await prisma.specialistWorkingPeriod.create({
+      data: {
+        businessId: otherBusiness.id,
+        specialistId: otherSpecialist.id,
+        weekday: 1,
+        startMinute: 540,
+        endMinute: 780,
+      },
+    });
+    await seedDemoData(prisma);
+    assert.deepEqual(
+      await prisma.specialistWorkingPeriod.findMany({
+        where: { id: { in: before.map((p) => p.id) } },
+        orderBy: { id: 'asc' },
+      }),
+      before,
+    );
+    await prisma.specialistWorkingPeriod.update({
+      where: { id: before[0].id },
+      data: { startMinute: 570 },
+    });
+    await prisma.specialistWorkingPeriod.delete({ where: { id: before[1].id } });
+    await seedDemoData(prisma);
+    const restored = await prisma.specialistWorkingPeriod.findMany({
+      where: { id: { in: before.map((p) => p.id) } },
+      orderBy: { id: 'asc' },
+    });
+    assert.deepEqual(
+      restored.map((period) => ({ ...period, createdAt: null })),
+      before.map((period) => ({ ...period, createdAt: null })),
+    );
+    assert.deepEqual(restored[0].createdAt, before[0].createdAt);
+    assert.deepEqual(
+      await prisma.specialistWorkingPeriod.findUniqueOrThrow({ where: { id: extra.id } }),
+      extra,
+    );
+    assert.deepEqual(
+      await prisma.specialistWorkingPeriod.findUniqueOrThrow({ where: { id: unrelated.id } }),
+      unrelated,
+    );
+    assert.equal(await prisma.specialistWorkingPeriod.count(), 17);
+  });
+});
+
+test('a late working-period failure rolls back the whole seed', async () => {
+  await withSeedDatabase(async (prisma, pool) => {
+    await pool.query(
+      'ALTER TABLE specialist_working_periods ADD CONSTRAINT seed_period_failure CHECK (weekday <> 5)',
+    );
+    await assert.rejects(seedDemoData(prisma));
+    for (const model of [
+      'business',
+      'service',
+      'specialist',
+      'specialistService',
+      'specialistWorkingPeriod',
+    ]) {
+      assert.equal(await prisma[model].count(), 0);
+    }
+  });
+});
+
+test('a conflicting manual period is preserved and seed updates are rolled back', async () => {
+  await withSeedDatabase(async (prisma) => {
+    const business = await prisma.business.create({
+      data: { ...demoBusiness, name: 'Manual name' },
+    });
+    const specialist = await prisma.specialist.create({
+      data: { ...demoSpecialists[0], businessId: business.id, name: 'Manual specialist' },
+    });
+    const manual = await prisma.specialistWorkingPeriod.create({
+      data: {
+        businessId: business.id,
+        specialistId: specialist.id,
+        weekday: 1,
+        startMinute: 570,
+        endMinute: 600,
+      },
+    });
+    await assert.rejects(seedDemoData(prisma));
+    assert.deepEqual(
+      await prisma.business.findUniqueOrThrow({ where: { id: business.id } }),
+      business,
+    );
+    assert.deepEqual(
+      await prisma.specialist.findUniqueOrThrow({ where: { id: specialist.id } }),
+      specialist,
+    );
+    assert.deepEqual(await prisma.specialistWorkingPeriod.findMany(), [manual]);
+    assert.equal(await prisma.service.count(), 0);
     assert.equal(await prisma.specialistService.count(), 0);
   });
 });

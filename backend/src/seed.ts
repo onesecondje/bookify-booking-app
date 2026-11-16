@@ -4,13 +4,14 @@ import {
   demoBusiness,
   demoServices,
   demoSpecialists,
+  demoWorkingPeriods,
   seedDemoData,
 } from './demo-data.js';
 
 try {
   await seedDemoData(prisma);
   console.log(
-    `Demo data ready: business ${demoBusiness.id}, ${demoServices.length} services, ${demoSpecialists.length} specialists, ${demoAssignments.length} assignments.`,
+    `Demo data ready: business ${demoBusiness.id}, ${demoServices.length} services, ${demoSpecialists.length} specialists, ${demoAssignments.length} assignments, ${demoWorkingPeriods.length} working periods.`,
   );
 } catch {
   // Driver and Prisma errors may contain connection details or row values.

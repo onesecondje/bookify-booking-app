@@ -171,6 +171,31 @@ documentation for key/index details. A public specialist endpoint is available f
 a selected service (see below). Specialist selection UI is not implemented yet;
 the explicit demo seed includes specialists and service assignments.
 
+## Weekly specialist working periods
+
+`SpecialistWorkingPeriod` stores recurring local working intervals: `weekday`
+uses ISO numbering (Monday 1 through Sunday 7), and `startMinute`/`endMinute`
+are integer minutes since local midnight in `Business.timeZone`. For example,
+Monday 09:00-13:00 is weekday 1, start 540, end 780. Multiple periods allow breaks;
+no periods for a weekday means no working hours. End minute 1440 means the next
+midnight boundary. Overnight intervals must not be represented with end <= start.
+
+SQL checks enforce valid weekdays and `0 <= startMinute < endMinute <= 1440`.
+A composite foreign key prevents cross-business specialist links. A GiST exclusion
+constraint rejects overlapping periods for the same business, specialist and weekday,
+including concurrent writes. Adjacent periods are allowed. Deactivation preserves
+the schedule. A lookup index supports reads by business, specialist, weekday and start.
+
+The migration installs PostgreSQL's `btree_gist` extension in `public` if absent.
+The deployment role needs permission to install it, or an administrator must install
+it in `public` beforehand. CHECK and exclusion constraints are maintained in SQL;
+Prisma's schema and migration diff do not fully describe these rules.
+
+The explicit demo seed includes weekly working periods. There is no schedule API,
+date exception handling, timezone conversion, availability calculation or
+booking functionality. Apply the reviewed migration explicitly with `db:migrate`;
+API startup does not apply it. See the migration README for verification details.
+
 ## Demonstration data
 
 After migrations and client generation, populate the local development database:
@@ -203,6 +228,20 @@ The demo also includes two active specialists and three assignments:
 Inactive Hair coloring remains unassigned. This demonstrates both directions of
 the many-to-many relation without defining a limit on specialists or assignments.
 
+The seed includes 15 weekly working periods in Europe/Warsaw local time:
+
+| Specialist | Days          | Working hours               |
+| ---------- | ------------- | --------------------------- |
+| Alice      | Monday-Friday | 09:00-13:00 and 14:00-18:00 |
+| Alex       | Monday-Friday | 10:00-16:00                 |
+
+No weekend periods are seeded. Alice's midday gap demonstrates a break. Each period
+has a stable UUID derived from weekday and period number, and is upserted by that ID.
+Repeated runs restore its specialist, weekday and minute bounds while preserving
+creation time; missing periods are recreated. Extra manual periods and unrelated
+schedules are retained. A conflicting manual interval causes the entire seed to
+roll back instead of deleting the manual period. These are demo hours, not product limits.
+
 Each demo record has a stable UUID. Upserts identify records by that UUID, so
 renaming one does not create a duplicate on the next seed. Repeated runs restore
 the defined demo names, time zone, durations, business links, and active flags.
@@ -216,14 +255,16 @@ manual edits to these demo records are deliberately overwritten on the next run.
 The script does not prune records removed from its dataset definition.
 
 All upserts share one Prisma transaction, ordered business, services, specialists,
-then assignments. A failure at any stage rolls back that run's changes. Apply all
+assignments, then working periods. A failure at any stage rolls back that run's changes. Apply all
 migrations before seeding.
 Logs omit driver error details and row values. Schema defaults still generate IDs
-for normal inserts; fixed seed IDs require no migration. Schedules, bookings, and contact data are not seeded; their models do not exist yet.
+for normal inserts; fixed seed IDs require no migration. Bookings and contact data
+are not seeded; their models do not exist yet.
 
 Integration tests verify repeatability, preservation of unrelated records and
 creation times, restoration of missing assignments, preservation of additional assignments, and
-rollback when a service or later assignment insert fails. Tests use isolated
+working-period restoration and rollback on late schedule failures or manual overlaps,
+and rollback when a service or later assignment insert fails. Tests use isolated
 temporary schemas and never seed the application tables.
 
 ## Express application and HTTP server

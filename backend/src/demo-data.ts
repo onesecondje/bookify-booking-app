@@ -31,7 +31,7 @@ export const demoServices = [
 export const demoSpecialists = [
   { id: '30000000-0000-4000-8000-000000000001', name: 'Alice', isActive: true },
   { id: '30000000-0000-4000-8000-000000000002', name: 'Alex', isActive: true },
-];
+] as const;
 
 export const demoAssignments = [
   {
@@ -47,6 +47,31 @@ export const demoAssignments = [
     serviceId: '20000000-0000-4000-8000-000000000001',
   },
 ];
+
+// Each weekday has stable IDs for Alice's two periods and Alex's single period.
+export const demoWorkingPeriods = [1, 2, 3, 4, 5].flatMap((weekday) => [
+  {
+    id: `40000000-0000-4000-8000-${String(weekday * 10 + 1).padStart(12, '0')}`,
+    specialistId: demoSpecialists[0].id,
+    weekday,
+    startMinute: 540,
+    endMinute: 780,
+  },
+  {
+    id: `40000000-0000-4000-8000-${String(weekday * 10 + 2).padStart(12, '0')}`,
+    specialistId: demoSpecialists[0].id,
+    weekday,
+    startMinute: 840,
+    endMinute: 1080,
+  },
+  {
+    id: `40000000-0000-4000-8000-${String(weekday * 10 + 3).padStart(12, '0')}`,
+    specialistId: demoSpecialists[1].id,
+    weekday,
+    startMinute: 600,
+    endMinute: 960,
+  },
+]);
 
 export async function seedDemoData(prisma: PrismaClient): Promise<void> {
   await prisma.$transaction(async (transaction) => {
@@ -86,6 +111,21 @@ export async function seedDemoData(prisma: PrismaClient): Promise<void> {
         create: data,
         // Existing assignments have no editable payload; preserve their creation time.
         update: {},
+      });
+    }
+
+    for (const period of demoWorkingPeriods) {
+      const data = { ...period, businessId: demoBusiness.id };
+      await transaction.specialistWorkingPeriod.upsert({
+        where: { id: period.id },
+        create: data,
+        update: {
+          businessId: data.businessId,
+          specialistId: data.specialistId,
+          weekday: data.weekday,
+          startMinute: data.startMinute,
+          endMinute: data.endMinute,
+        },
       });
     }
   });

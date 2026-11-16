@@ -151,5 +151,7 @@ two specialists and three assignments. The public API lists active assigned spec
 at `GET /api/businesses/:businessId/services/:serviceId/specialists`.
 The frontend supports URL-based service selection and displays active specialists
 for that service. Users can select a specialist through the URL and review the
-service, duration and specialist together. Schedules and appointment availability
-are not implemented yet.
+service, duration and specialist together. A migration defines weekly specialist
+working periods with database-enforced bounds and non-overlap. The explicit seed
+adds weekday working periods for Alice and Alex. Scheduling APIs and appointment
+availability are not implemented yet.
