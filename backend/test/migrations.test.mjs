@@ -68,6 +68,7 @@ test('Prisma deploy is repeatable and preserves database constraints and default
     assert.deepEqual(history.rows.map((row) => row.migration_name).sort(), [
       '0_init',
       '20261110000100_add_specialists_and_service_assignments',
+      '20261112000100_add_specialist_working_periods',
     ]);
     assert.ok(history.rows.every((row) => row.finished_at));
     const { rows: businesses } = await pool.query(
@@ -150,7 +151,7 @@ test('baselining existing tables preserves records and does not recreate tables'
       tableBefore,
     );
     assert.equal((await pool.query('SELECT * FROM businesses')).rowCount, 1);
-    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 2);
+    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 3);
   });
 });
 
@@ -270,6 +271,184 @@ test('specialist assignments support many-to-many relations and enforce business
         'specialist_services_business_id_service_id_idx',
         'specialist_services_pkey',
       ]);
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+});
+
+test('weekly working periods enforce bounds, ownership and atomic non-overlap', async () => {
+  await withDatabase(async (pool, schema) => {
+    // Upgrade an existing specialist dataset, rather than only testing an empty database.
+    await pool.query(baseline);
+    await pool.query(
+      await readFile(
+        new URL(
+          '../prisma/migrations/20261110000100_add_specialists_and_service_assignments/migration.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
+    const prisma = new PrismaClient({
+      adapter: new PrismaPg(pool, { schema, disposeExternalPool: false }),
+      log: [],
+    });
+    try {
+      const a = await prisma.business.create({
+        data: { name: 'Studio A', timeZone: 'Europe/Warsaw' },
+      });
+      const b = await prisma.business.create({
+        data: { name: 'Studio B', timeZone: 'Europe/Warsaw' },
+      });
+      const alice = await prisma.specialist.create({ data: { businessId: a.id, name: 'Alice' } });
+      const alex = await prisma.specialist.create({ data: { businessId: a.id, name: 'Alex' } });
+      const bob = await prisma.specialist.create({ data: { businessId: b.id, name: 'Bob' } });
+      const service = await prisma.service.create({
+        data: { businessId: a.id, name: 'Haircut', durationMinutes: 30 },
+      });
+      await prisma.specialistService.create({
+        data: { businessId: a.id, specialistId: alice.id, serviceId: service.id },
+      });
+      const tables = ['businesses', 'services', 'specialists', 'specialist_services'];
+      const before = await Promise.all(
+        tables.map(async (table) => ({
+          rows: (await pool.query(`SELECT * FROM ${table} ORDER BY 1, 2`)).rows,
+          oid: (await pool.query('SELECT $1::regclass::oid AS oid', [table])).rows,
+        })),
+      );
+      await migrate(schema, 'resolve', '--applied', '0_init');
+      await migrate(
+        schema,
+        'resolve',
+        '--applied',
+        '20261110000100_add_specialists_and_service_assignments',
+      );
+      await migrate(schema, 'deploy');
+      for (const [index, table] of tables.entries()) {
+        assert.deepEqual(
+          (await pool.query(`SELECT * FROM ${table} ORDER BY 1, 2`)).rows,
+          before[index].rows,
+        );
+        assert.deepEqual(
+          (await pool.query('SELECT $1::regclass::oid AS oid', [table])).rows,
+          before[index].oid,
+        );
+      }
+
+      const insert = (businessId, specialistId, weekday, start, end, connection = pool) =>
+        connection.query(
+          'INSERT INTO specialist_working_periods (business_id, specialist_id, weekday, start_minute, end_minute) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+          [businessId, specialistId, weekday, start, end],
+        );
+      const morning = await prisma.specialistWorkingPeriod.create({
+        data: {
+          businessId: a.id,
+          specialistId: alice.id,
+          weekday: 1,
+          startMinute: 540,
+          endMinute: 780,
+        },
+      });
+      assert.match(morning.id, /^[0-9a-f-]{36}$/);
+      assert.ok(morning.createdAt instanceof Date);
+      await insert(a.id, alice.id, 1, 780, 840); // Adjacent periods are allowed.
+      await insert(a.id, alice.id, 1, 900, 1080); // A break between periods is allowed.
+      await insert(a.id, alice.id, 2, 0, 1440); // Full local day and another weekday.
+      await insert(a.id, alex.id, 1, 540, 780);
+      await insert(b.id, bob.id, 1, 540, 780);
+      const related = await prisma.specialist.findUniqueOrThrow({
+        where: { id: alice.id },
+        select: { workingPeriods: { orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }] } },
+      });
+      assert.deepEqual(
+        related.workingPeriods.map((p) => [p.weekday, p.startMinute, p.endMinute]),
+        [
+          [1, 540, 780],
+          [1, 780, 840],
+          [1, 900, 1080],
+          [2, 0, 1440],
+        ],
+      );
+      for (const [start, end] of [
+        [540, 780],
+        [600, 660],
+        [500, 600],
+        [700, 800],
+        [500, 1100],
+      ]) {
+        await assert.rejects(insert(a.id, alice.id, 1, start, end), { code: '23P01' });
+      }
+      for (const [day, start, end] of [
+        [0, 540, 780],
+        [8, 540, 780],
+        [1, -1, 10],
+        [1, 10, 10],
+        [1, 20, 10],
+        [1, 1400, 1441],
+      ]) {
+        await assert.rejects(insert(a.id, alice.id, day, start, end), { code: '23514' });
+      }
+      for (const values of [
+        [null, alice.id, 3, 540, 780],
+        [a.id, null, 3, 540, 780],
+        [a.id, alice.id, null, 540, 780],
+        [a.id, alice.id, 3, null, 780],
+        [a.id, alice.id, 3, 540, null],
+      ]) {
+        await assert.rejects(insert(...values), { code: '23502' });
+      }
+      await assert.rejects(insert(a.id, bob.id, 1, 540, 780), { code: '23503' });
+      await assert.rejects(insert(b.id, alice.id, 1, 540, 780), { code: '23503' });
+      await assert.rejects(insert(a.id, randomUUID(), 1, 540, 780), { code: '23503' });
+      await assert.rejects(
+        pool.query(
+          'UPDATE specialist_working_periods SET start_minute = 700 WHERE business_id = $1 AND start_minute = 900',
+          [a.id],
+        ),
+        { code: '23P01' },
+      );
+      await assert.rejects(pool.query('DELETE FROM specialists WHERE id = $1', [alex.id]), {
+        code: '23001',
+      });
+      await assert.rejects(
+        pool.query('UPDATE specialists SET business_id = $1 WHERE id = $2', [b.id, alex.id]),
+        { code: '23503' },
+      );
+      await prisma.specialist.update({ where: { id: alice.id }, data: { isActive: false } });
+      assert.equal(
+        await prisma.specialistWorkingPeriod.count({ where: { specialistId: alice.id } }),
+        4,
+      );
+
+      const first = await pool.connect();
+      const second = await pool.connect();
+      try {
+        await first.query('BEGIN');
+        await first.query("SET LOCAL statement_timeout = '5s'");
+        await second.query("SET statement_timeout = '5s'");
+        await insert(a.id, alex.id, 3, 540, 600, first);
+        const conflict = assert.rejects(insert(a.id, alex.id, 3, 570, 630, second), {
+          code: '23P01',
+        });
+        await first.query('COMMIT');
+        await conflict;
+      } finally {
+        await first.query('ROLLBACK');
+        first.release();
+        second.release();
+      }
+      assert.equal(
+        await prisma.specialistWorkingPeriod.count({
+          where: { specialistId: alex.id, weekday: 3 },
+        }),
+        1,
+      );
+      const index = await pool.query(
+        'SELECT indexdef FROM pg_indexes WHERE schemaname = $1 AND indexname = $2',
+        [schema, 'specialist_working_periods_lookup_idx'],
+      );
+      assert.match(index.rows[0].indexdef, /\(business_id, specialist_id, weekday, start_minute\)/);
     } finally {
       await prisma.$disconnect();
     }

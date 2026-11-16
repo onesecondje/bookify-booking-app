@@ -144,7 +144,45 @@ of existing data during baseline-plus-upgrade deployment.
 The explicit demo seed now adds Alice and Alex and three service assignments; see
 the backend README. A public specialist lookup for a selected active service is
 implemented; it filters inactive specialists without deleting assignments. The public
-services endpoint retains its contract. Specialist selection UI is not implemented yet.
+services endpoint retains its contract. The frontend supports service and specialist
+selection; no scheduling API is implemented yet.
+
+## Weekly working periods
+
+Migration `20261112000100_add_specialist_working_periods` adds the
+`specialist_working_periods` table without altering existing application tables.
+The migration is transactional and installs `btree_gist` in `public` if absent.
+An existing installation must already be in `public`; this migration does not move
+extensions. Installation requires the appropriate database CREATE permission or
+prior administrator provisioning. It is a database-wide extension, not per schema.
+
+Each row contains a UUID, business/specialist IDs, ISO weekday (1-7), local start/end
+minutes and a creation timestamp. Minutes describe recurring wall-clock times in
+the business timezone, not UTC instants. CHECK constraints require
+`0 <= start_minute < end_minute <= 1440`. A composite foreign key references
+`specialists(business_id, id)` with Restrict/NoAction actions.
+
+The exclusion constraint combines equal business, specialist and weekday with an
+overlapping `int4range(start_minute, end_minute, '[)')`. The lower bound is included
+and the upper bound excluded, so adjacent intervals do not overlap. `btree_gist`
+provides the UUID/integer equality operator classes; they are explicitly qualified
+with `public` so isolated schema search paths still work. The constraint rejects
+duplicates, partial overlaps and containment, including concurrent inserts/updates.
+The separate B-tree lookup index orders business, specialist, weekday and start.
+Prisma exposes the specialist's `workingPeriods` relation; custom CHECK/exclusion
+constraints remain SQL-owned and need behavioral tests, not only migrate diff.
+
+Migration tests verify upgrade preservation of all existing rows/table identities,
+Prisma relation reads, day/minute bounds, nulls, missing/cross-business specialists,
+adjacent intervals, overlapping inserts/updates, delete/update restrictions,
+deactivation preservation and two concurrent conflicting inserts.
+
+For complete isolation, run tests with DATABASE_URL pointing to a disposable test
+database. Schema-isolated tests still install the database-wide `btree_gist`
+extension when it is absent. Never remove an existing extension during cleanup.
+The explicit seed defines 15 demo working periods; see the backend README. There is
+no schedule or availability API. The schema does not validate
+IANA timezone names or define DST/date exception behavior; those are later steps.
 
 ## Integration tests
 
