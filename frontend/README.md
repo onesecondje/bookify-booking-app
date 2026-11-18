@@ -128,8 +128,9 @@ Once the selected specialist matches the active assignment, the date form adds a
 specialist IDs and clears the previous time. Changing the service or specialist
 clears the date and time. A missing or invalid date does not call the availability API.
 
-`src/app/appointment-selection.tsx` loads schedule slots in a Suspense boundary using
-the server-only `getSpecialistAvailability` loader. Slot links add the UTC `startsAt`
+`src/app/appointment-selection.tsx` renders the date form and a Suspense boundary.
+`src/app/availability-slots.tsx` loads schedule slots using the server-only
+`getSpecialistAvailability` loader. Slot links add the UTC `startsAt`
 to the URL. The server highlights a time only when the start matches a slot in the
 fresh response. An expired or invalid selection can be replaced. Retrying a temporary
 failure keeps the date and the single requested start for revalidation.
