@@ -295,6 +295,10 @@ services and bookings that started on an earlier day. Cancellation releases
 the interval. Both slot and booking ranges are half-open, so a slot can begin
 when a booking ends or end when one begins. The booking POST still checks
 conflicts atomically at insert time because availability can change after a GET.
+The GET uses one Prisma `findMany` to read active booking bounds across the slot
+window and compares each candidate interval in TypeScript. The booking POST
+stores server-generated slot boundaries, which are representable by JavaScript
+`Date` without losing precision.
 
 ## Booking storage
 

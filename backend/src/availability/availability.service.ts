@@ -1,7 +1,7 @@
 import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import type { parseLocalDate } from '../validation/local-date.js';
-import { findAvailabilitySchedule, findUnoccupiedSlotStarts } from './availability.repository.js';
+import { findActiveBookingsInWindow, findAvailabilitySchedule } from './availability.repository.js';
 import { generateScheduleSlots } from './schedule-slots.js';
 
 export async function getScheduleAvailability(
@@ -54,20 +54,34 @@ export async function getBookingAvailability(
   date: NonNullable<ReturnType<typeof parseLocalDate>>,
 ) {
   const result = await getScheduleAvailability(database, businessId, serviceId, specialistId, date);
-  if (result.error || result.availability.slots.length === 0) return result;
+  if (result.error) return result;
 
   const { availability } = result;
-  const unoccupied = await findUnoccupiedSlotStarts(
+  const candidates = availability.slots.map((slot) => ({
+    slot,
+    startsAt: new Date(slot.startsAt),
+    endsAt: new Date(slot.endsAt),
+  }));
+  const first = candidates[0];
+  const last = candidates.at(-1);
+  if (!first || !last) return result;
+
+  // Slots are ordered by start and have the same elapsed service duration.
+  const bookings = await findActiveBookingsInWindow(
     database,
     businessId,
     specialistId,
-    availability.slots,
+    first.startsAt,
+    last.endsAt,
   );
-  const unoccupiedStarts = new Set(unoccupied.map(({ startsAt }) => startsAt));
+  const freeSlots = candidates.filter(
+    (slot) =>
+      !bookings.some((booking) => slot.startsAt < booking.endsAt && booking.startsAt < slot.endsAt),
+  );
   return {
     availability: {
       ...availability,
-      slots: availability.slots.filter((slot) => unoccupiedStarts.has(slot.startsAt)),
+      slots: freeSlots.map(({ slot }) => slot),
     },
   };
 }
