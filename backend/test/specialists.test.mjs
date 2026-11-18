@@ -30,7 +30,11 @@ test('GET service specialists HTTP contract', async (t) => {
   try {
     await once(server, 'listening');
     await admin.query(`CREATE SCHEMA "${schema}"`);
-    for (const migration of ['0_init', '20261110000100_add_specialists_and_service_assignments']) {
+    for (const migration of [
+      '0_init',
+      '20261110000100_add_specialists_and_service_assignments',
+      '20261112000100_add_specialist_working_periods',
+    ]) {
       await pool.query(
         await readFile(
           new URL(`../prisma/migrations/${migration}/migration.sql`, import.meta.url),
@@ -89,6 +93,74 @@ test('GET service specialists HTTP contract', async (t) => {
       assert.equal(response.status, status);
       assert.deepEqual(await response.json(), { error: { code, message } });
     };
+
+    await t.test(
+      'availability returns scoped schedule slots and validates request inputs',
+      async () => {
+        const date = '2099-01-05';
+        await prisma.specialistWorkingPeriod.create({
+          data: {
+            businessId: business.id,
+            specialistId: first.id,
+            weekday: 1,
+            startMinute: 540,
+            endMinute: 585,
+          },
+        });
+        const availability = (
+          specialistId = first.id,
+          serviceId = service.id,
+          businessId = business.id,
+          query = `date=${date}`,
+        ) => request(businessId, serviceId, `/${specialistId}/availability?${query}`);
+
+        const response = await availability();
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), {
+          date,
+          timeZone: 'Europe/Warsaw',
+          unresolvedPeriodCount: 0,
+          slots: [
+            { startsAt: `${date}T08:00:00Z`, endsAt: `${date}T08:30:00Z` },
+            { startsAt: `${date}T08:15:00Z`, endsAt: `${date}T08:45:00Z` },
+          ],
+        });
+        for (const emptyResponse of [
+          await availability(second.id),
+          await availability(first.id, service.id, business.id, 'date=2099-01-06'),
+          await availability(first.id, service.id, business.id, 'date=2000-01-03'),
+        ]) {
+          assert.equal(emptyResponse.status, 200);
+          assert.deepEqual((await emptyResponse.json()).slots, []);
+        }
+        for (const [errorResponse, status, code] of [
+          [await availability('invalid'), 400, 'INVALID_SPECIALIST_ID'],
+          [await availability(first.id, 'invalid'), 400, 'INVALID_SERVICE_ID'],
+          [await availability(first.id, service.id, 'invalid'), 400, 'INVALID_BUSINESS_ID'],
+          [await availability(first.id, service.id, randomUUID()), 404, 'BUSINESS_NOT_FOUND'],
+          [await availability(first.id, foreign.id), 404, 'SERVICE_NOT_FOUND'],
+          [await availability(first.id, inactive.id), 404, 'SERVICE_NOT_FOUND'],
+          ...(await Promise.all(
+            [unassigned.id, disabled.id, foreignSpecialist.id].map(async (id) => [
+              await availability(id),
+              404,
+              'SPECIALIST_NOT_FOUND',
+            ]),
+          )),
+        ]) {
+          assert.equal(errorResponse.status, status);
+          assert.equal((await errorResponse.json()).error.code, code);
+        }
+        for (const query of ['', 'date=2099-02-30', `date=${date}&date=${date}`]) {
+          await expectError(
+            await availability(first.id, service.id, business.id, query),
+            400,
+            'INVALID_DATE',
+            'date must be a valid YYYY-MM-DD date.',
+          );
+        }
+      },
+    );
 
     await t.test(
       'filters by business, assignment and active status, orders ties and selects public fields',

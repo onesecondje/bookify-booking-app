@@ -1,4 +1,5 @@
 import express from 'express';
+import { createAvailabilityRouter } from './availability/availability.routes.js';
 import type { Express } from 'express';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
@@ -18,6 +19,7 @@ export function createApp(database: PrismaClient): Express {
 
   app.use('/api', createServicesRouter(database));
   app.use('/api', createSpecialistsRouter(database));
+  app.use('/api', createAvailabilityRouter(database));
 
   // Register fallback handlers after all routes; the error handler must be last.
   app.use(notFound);

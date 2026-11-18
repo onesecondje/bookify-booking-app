@@ -191,9 +191,8 @@ The deployment role needs permission to install it, or an administrator must ins
 it in `public` beforehand. CHECK and exclusion constraints are maintained in SQL;
 Prisma's schema and migration diff do not fully describe these rules.
 
-The explicit demo seed includes weekly working periods. There is no schedule API,
-date exception handling, complete availability calculation or
-booking functionality. Apply the reviewed migration explicitly with `db:migrate`;
+The explicit demo seed includes weekly working periods that feed the availability
+endpoint. Apply the reviewed migration explicitly with `db:migrate`;
 API startup does not apply it. See the migration README for verification details.
 
 ## Local start candidates
@@ -207,7 +206,7 @@ periods remain separate, so candidates do not span their boundary.
 These are intermediate wall-clock candidates, not available appointment instants.
 The helper itself does not resolve timezones/DST, remove past times or subtract
 bookings. The schedule-slot calculation below composes it with UTC resolution;
-neither helper is connected to an HTTP endpoint or UI yet.
+the availability endpoint calls that calculation.
 
 ## Local date/time to UTC
 
@@ -238,8 +237,8 @@ how to handle working-period boundaries. The resolver itself selects no policy.
 
 Tests cover winter/summer offsets, Warsaw gaps/folds, Lord Howe half-hour changes,
 Apia's skipped date, leap dates, year boundaries and 23/25-hour local days. The
-resolver is used by schedule-slot generation but is not connected to persistence,
-HTTP or UI. Service duration is added as elapsed minutes to a resolved instant;
+resolver is used by schedule-slot generation. Service duration is added as
+elapsed minutes to a resolved instant;
 converting a separate local end time is not sufficient across offset changes.
 
 ## Schedule slots for a date
@@ -266,10 +265,31 @@ working period; adjacent periods are not merged. Results contain UTC `startsAt` 
 `endsAt` strings and are sorted by their actual instants, including repeated hours.
 
 The result represents future schedule slots, not complete booking availability.
-Active bookings and date exceptions are not subtracted, no booking is reserved,
-and there is no availability endpoint/UI yet. Tests exercise demo lunch/weekend
+Booking and date exceptions are future work. Tests exercise demo lunch/weekend
 rules, invalid inputs, past starts, next midnight, DST gaps/folds, elapsed duration,
 uncertain boundaries, and preservation of input arrays.
+
+## Public availability endpoint
+
+`GET /api/businesses/:businessId/services/:serviceId/specialists/:specialistId/availability?date=YYYY-MM-DD`
+treats the date as a calendar day in the business time zone. A successful response
+contains `date`, `timeZone`, `slots` (UTC `startsAt` and `endsAt`), and
+`unresolvedPeriodCount` (working periods skipped because a boundary could not be
+resolved uniquely). A valid request with no future schedule slots returns
+`200` with an empty array.
+
+The endpoint validates IDs and the calendar date before database access. Missing,
+repeated or invalid dates return `400 INVALID_DATE`. Malformed UUIDs return
+`400 INVALID_BUSINESS_ID`, `INVALID_SERVICE_ID` or `INVALID_SPECIALIST_ID`.
+An absent business returns `404 BUSINESS_NOT_FOUND`. An absent, inactive or
+out-of-scope service returns `404 SERVICE_NOT_FOUND`. An absent, inactive or
+unassigned specialist returns `404 SPECIALIST_NOT_FOUND`. Unexpected failures
+use the standard `500 INTERNAL_SERVER_ERROR`.
+
+The repository scopes the query to the business and active service, follows the
+active specialist's assignment, and reads only working periods for the requested
+weekday. The route passes those inputs and the current instant to the slot calculator.
+These are schedule-derived slots for display; booking conflict checks are future work.
 
 ## Demonstration data
 
