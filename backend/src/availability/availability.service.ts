@@ -1,7 +1,7 @@
 import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import type { parseLocalDate } from '../validation/local-date.js';
-import { findAvailabilitySchedule } from './availability.repository.js';
+import { findAvailabilitySchedule, findUnoccupiedSlotStarts } from './availability.repository.js';
 import { generateScheduleSlots } from './schedule-slots.js';
 
 export async function getScheduleAvailability(
@@ -44,4 +44,30 @@ export async function getScheduleAvailability(
     now: new Date().toISOString(),
   });
   return { availability: { date: localDate, timeZone: business.timeZone, ...result } };
+}
+
+export async function getBookingAvailability(
+  database: PrismaClient,
+  businessId: string,
+  serviceId: string,
+  specialistId: string,
+  date: NonNullable<ReturnType<typeof parseLocalDate>>,
+) {
+  const result = await getScheduleAvailability(database, businessId, serviceId, specialistId, date);
+  if (result.error || result.availability.slots.length === 0) return result;
+
+  const { availability } = result;
+  const unoccupied = await findUnoccupiedSlotStarts(
+    database,
+    businessId,
+    specialistId,
+    availability.slots,
+  );
+  const unoccupiedStarts = new Set(unoccupied.map(({ startsAt }) => startsAt));
+  return {
+    availability: {
+      ...availability,
+      slots: availability.slots.filter((slot) => unoccupiedStarts.has(slot.startsAt)),
+    },
+  };
 }

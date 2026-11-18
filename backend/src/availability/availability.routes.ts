@@ -3,7 +3,7 @@ import { ApiErrorCode } from '../enums/api-error-code.enum.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { parseLocalDate } from '../validation/local-date.js';
 import { isUuid } from '../validation/uuid.js';
-import { getScheduleAvailability } from './availability.service.js';
+import { getBookingAvailability } from './availability.service.js';
 import { availabilityIdErrors } from './constants/availability.constants.js';
 
 export function createAvailabilityRouter(database: PrismaClient): Router {
@@ -30,7 +30,7 @@ export function createAvailabilityRouter(database: PrismaClient): Router {
         return;
       }
 
-      const result = await getScheduleAvailability(
+      const result = await getBookingAvailability(
         database,
         businessId,
         serviceId,

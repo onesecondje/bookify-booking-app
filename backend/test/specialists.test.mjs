@@ -163,6 +163,76 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       },
     );
 
+    await t.test(
+      'availability removes overlapping active bookings until cancellation',
+      async () => {
+        const date = '2099-01-07';
+        const otherService = await makeService(business.id, 'Other assigned service');
+        await prisma.specialistService.create({
+          data: { businessId: business.id, specialistId: first.id, serviceId: otherService.id },
+        });
+        await prisma.specialistWorkingPeriod.create({
+          data: {
+            businessId: business.id,
+            specialistId: first.id,
+            weekday: 3,
+            startMinute: 525,
+            endMinute: 615,
+          },
+        });
+        const time = (clock) => `${date}T${clock}:00Z`;
+        const getStarts = async () => {
+          const response = await request(
+            business.id,
+            service.id,
+            `/${first.id}/availability?date=${date}`,
+          );
+          assert.equal(response.status, 200);
+          const availability = await response.json();
+          assert.equal(availability.timeZone, 'Europe/Warsaw');
+          assert.equal(availability.unresolvedPeriodCount, 0);
+          return availability.slots.map(({ startsAt }) => startsAt);
+        };
+        const create = (specialistId, serviceId, startsAt, endsAt) =>
+          prisma.booking.create({
+            data: {
+              businessId: business.id,
+              specialistId,
+              serviceId,
+              startsAt: new Date(startsAt),
+              endsAt: new Date(endsAt),
+            },
+          });
+        const expected = ['07:45', '08:00', '08:15', '08:30', '08:45'].map(time);
+        assert.deepEqual(await getStarts(), expected);
+        const otherSpecialistBooking = await create(
+          second.id,
+          service.id,
+          time('07:45'),
+          time('09:15'),
+        );
+        const blocking = await create(first.id, otherService.id, time('08:15'), time('08:45'));
+        assert.deepEqual(await getStarts(), ['07:45', '08:45'].map(time));
+
+        await prisma.booking.update({
+          where: { id: blocking.id },
+          data: { cancelledAt: new Date() },
+        });
+        assert.deepEqual(await getStarts(), expected);
+        const overnight = await create(
+          first.id,
+          otherService.id,
+          '2099-01-06T23:30:00Z',
+          time('09:15'),
+        );
+        assert.deepEqual(await getStarts(), []);
+
+        await prisma.booking.deleteMany({
+          where: { id: { in: [otherSpecialistBooking.id, blocking.id, overnight.id] } },
+        });
+      },
+    );
+
     await t.test('creates a server-validated booking and maps overlaps to HTTP 409', async () => {
       const date = '2099-01-06';
       const startsAt = `${date}T08:00:00Z`;

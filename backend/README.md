@@ -264,8 +264,8 @@ Starts at or before `now` are omitted. Each slot must fit entirely in one resolv
 working period; adjacent periods are not merged. Results contain UTC `startsAt` and
 `endsAt` strings and are sorted by their actual instants, including repeated hours.
 
-The result represents future schedule slots. Filtering active bookings and date
-exceptions is future work. Tests exercise demo lunch/weekend
+The calculator produces schedule candidates. The GET endpoint filters active
+bookings separately. Date exceptions are future work. Tests exercise demo lunch/weekend
 rules, invalid inputs, past starts, next midnight, DST gaps/folds, elapsed duration,
 uncertain boundaries, and preservation of input arrays.
 
@@ -275,7 +275,7 @@ uncertain boundaries, and preservation of input arrays.
 treats the date as a calendar day in the business time zone. A successful response
 contains `date`, `timeZone`, `slots` (UTC `startsAt` and `endsAt`), and
 `unresolvedPeriodCount` (working periods skipped because a boundary could not be
-resolved uniquely). A valid request with no future schedule slots returns
+resolved uniquely). A valid request with no available slots returns
 `200` with an empty array.
 
 The endpoint validates IDs and the calendar date before database access. Missing,
@@ -289,8 +289,12 @@ use the standard `500 INTERNAL_SERVER_ERROR`.
 The repository scopes the query to the business and active service, follows the
 active specialist's assignment, and reads only working periods for the requested
 weekday. The route passes those inputs and the current instant to the slot calculator.
-The display endpoint currently lists schedule-derived slots. The booking POST
-checks conflicts against active bookings at insert time.
+The GET endpoint removes every slot whose UTC interval overlaps an active
+booking for the same business and specialist, including bookings for other
+services and bookings that started on an earlier day. Cancellation releases
+the interval. Both slot and booking ranges are half-open, so a slot can begin
+when a booking ends or end when one begins. The booking POST still checks
+conflicts atomically at insert time because availability can change after a GET.
 
 ## Booking storage
 
