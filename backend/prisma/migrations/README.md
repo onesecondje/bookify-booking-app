@@ -184,6 +184,21 @@ The explicit seed defines 15 demo working periods; see the backend README. There
 no schedule or availability API. The schema does not validate
 IANA timezone names or define DST/date exception behavior; those are later steps.
 
+## Bookings
+
+Migration `20261118000100_add_bookings` creates `bookings` in one transaction.
+A CHECK constraint requires finite start and end instants with start before end.
+The composite foreign keys enforce business ownership for both the specialist and
+service and restrict deletion while a booking references either record.
+
+The GiST exclusion constraint uses UUID equality from the existing `btree_gist`
+extension and the overlap operator `&&` on `tstzrange(starts_at, ends_at, '[)')`.
+The range includes the start and excludes the end, allowing one booking to start
+exactly when another ends. The `cancelled_at IS NULL` predicate limits the
+constraint to active bookings. PostgreSQL checks inserts and updates, including
+concurrent writes, and rejects conflicts with SQLSTATE `23P01`. The CHECK and
+exclusion constraints are maintained in migration SQL and verified by database tests.
+
 ## Integration tests
 
 Run `pnpm -C backend test` with PostgreSQL available and CREATE SCHEMA permission.

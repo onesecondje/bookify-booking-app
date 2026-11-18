@@ -30,6 +30,7 @@ model Service {
   createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   business        Business            @relation(fields: [businessId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "services_business_id_fkey")
   specialists     SpecialistService[]
+  bookings        Booking[]
 
   @@unique([businessId, id], map: "services_business_id_id_key")
   @@index([businessId], map: "services_business_id_idx")
@@ -46,6 +47,7 @@ model Specialist {
   business       Business                  @relation(fields: [businessId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   services       SpecialistService[]
   workingPeriods SpecialistWorkingPeriod[]
+  bookings       Booking[]
 
   @@unique([businessId, id], map: "specialists_business_id_id_key")
   @@map("specialists")
@@ -77,4 +79,22 @@ model SpecialistWorkingPeriod {
 
   @@index([businessId, specialistId, weekday, startMinute], map: "specialist_working_periods_lookup_idx")
   @@map("specialist_working_periods")
+}
+
+/// Interval bounds and active booking overlap are enforced by migration SQL.
+model Booking {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId   String     @map("business_id") @db.Uuid
+  specialistId String     @map("specialist_id") @db.Uuid
+  serviceId    String     @map("service_id") @db.Uuid
+  startsAt     DateTime   @map("starts_at") @db.Timestamptz(6)
+  endsAt       DateTime   @map("ends_at") @db.Timestamptz(6)
+  cancelledAt  DateTime?  @map("cancelled_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  specialist   Specialist @relation(fields: [businessId, specialistId], references: [businessId, id], onDelete: Restrict, onUpdate: NoAction, map: "bookings_specialist_fkey")
+  service      Service    @relation(fields: [businessId, serviceId], references: [businessId, id], onDelete: Restrict, onUpdate: NoAction, map: "bookings_service_fkey")
+
+  @@index([businessId, specialistId, startsAt], map: "bookings_specialist_start_idx")
+  @@index([businessId, serviceId], map: "bookings_service_idx")
+  @@map("bookings")
 }

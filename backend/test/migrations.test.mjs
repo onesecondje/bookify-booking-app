@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 import test from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath, URL } from 'node:url';
 import { promisify } from 'node:util';
 import { Pool } from 'pg';
@@ -60,6 +61,123 @@ async function withDatabase(check) {
   }
 }
 
+test('bookings retain their intervals and atomically prevent active specialist overlaps', async () => {
+  await withDatabase(async (pool, schema) => {
+    await migrate(schema, 'deploy');
+    const prisma = new PrismaClient({
+      adapter: new PrismaPg(pool, { schema, disposeExternalPool: false }),
+      log: [],
+    });
+    try {
+      const business = await prisma.business.create({
+        data: { name: 'Booking Studio', timeZone: 'Europe/Warsaw' },
+      });
+      const otherBusiness = await prisma.business.create({
+        data: { name: 'Other Studio', timeZone: 'Europe/Warsaw' },
+      });
+      const addSpecialist = (name, businessId = business.id) =>
+        prisma.specialist.create({ data: { businessId, name } });
+      const addService = (name, businessId = business.id) =>
+        prisma.service.create({ data: { businessId, name, durationMinutes: 30 } });
+      const alice = await addSpecialist('Alice');
+      const alex = await addSpecialist('Alex');
+      const foreignSpecialist = await addSpecialist('Bob', otherBusiness.id);
+      const haircut = await addService('Haircut');
+      const trim = await addService('Beard trim');
+      const foreignService = await addService('Haircut', otherBusiness.id);
+      const insert = (specialistId, serviceId, startsAt, endsAt, connection = pool) =>
+        connection.query(
+          'INSERT INTO bookings (business_id, specialist_id, service_id, starts_at, ends_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+          [business.id, specialistId, serviceId, startsAt, endsAt],
+        );
+      const original = await prisma.booking.create({
+        data: {
+          businessId: business.id,
+          specialistId: alice.id,
+          serviceId: haircut.id,
+          startsAt: new Date('2099-01-05T09:00:00+01:00'),
+          endsAt: new Date('2099-01-05T09:30:00+01:00'),
+        },
+      });
+      const start = original.startsAt.toISOString();
+      const end = original.endsAt.toISOString();
+      assert.equal(start, '2099-01-05T08:00:00.000Z');
+      assert.equal(end, '2099-01-05T08:30:00.000Z');
+      assert.equal(original.cancelledAt, null);
+      await insert(alice.id, trim.id, end, '2099-01-05T09:00:00Z');
+      await insert(alex.id, haircut.id, start, end);
+      await assert.rejects(insert(alice.id, trim.id, start, end), { code: '23P01' });
+      await assert.rejects(
+        insert(alice.id, trim.id, '2099-01-05T08:15:00Z', '2099-01-05T08:45:00Z'),
+        { code: '23P01' },
+      );
+      await assert.rejects(insert(alice.id, trim.id, start, start), { code: '23514' });
+      await assert.rejects(insert(alice.id, trim.id, end, start), { code: '23514' });
+      await assert.rejects(insert(alice.id, trim.id, start, 'infinity'), { code: '23514' });
+      await assert.rejects(insert(foreignSpecialist.id, trim.id, start, end), { code: '23503' });
+      await assert.rejects(insert(alex.id, foreignService.id, end, '2099-01-05T09:00:00Z'), {
+        code: '23503',
+      });
+
+      await prisma.service.update({ where: { id: haircut.id }, data: { durationMinutes: 45 } });
+      const cancelled = await prisma.booking.update({
+        where: { id: original.id },
+        data: { cancelledAt: new Date() },
+      });
+      assert.equal(cancelled.endsAt.toISOString(), end);
+      await insert(alice.id, trim.id, start, end);
+      await assert.rejects(
+        pool.query('UPDATE bookings SET cancelled_at = NULL WHERE id = $1', [original.id]),
+        { code: '23P01' },
+      );
+
+      const raceStart = '2099-01-05T10:00:00Z';
+      const first = await pool.connect();
+      const second = await pool.connect();
+      try {
+        await first.query('BEGIN');
+        await second.query('BEGIN');
+        await second.query("SET LOCAL statement_timeout = '5s'");
+        const {
+          rows: [{ pid }],
+        } = await second.query('SELECT pg_backend_pid() AS pid');
+        await insert(alice.id, haircut.id, raceStart, '2099-01-05T10:30:00Z', first);
+        const conflict = assert.rejects(
+          insert(alice.id, trim.id, '2099-01-05T10:15:00Z', '2099-01-05T10:45:00Z', second),
+          { code: '23P01', constraint: 'bookings_no_active_overlap' },
+        );
+        // Keep cleanup safe even if the blocking assertion fails.
+        void conflict.catch(() => {});
+        let blocking = false;
+        for (let attempt = 0; attempt < 100 && !blocking; attempt++) {
+          const { rows } = await first.query(
+            'SELECT pg_backend_pid() = ANY(pg_blocking_pids($1)) AS blocking',
+            [pid],
+          );
+          blocking = rows[0].blocking;
+          if (!blocking) await delay(10);
+        }
+        assert.ok(blocking, 'The competing insert must wait on the uncommitted booking');
+        await first.query('COMMIT');
+        await conflict;
+      } finally {
+        await first.query('ROLLBACK');
+        await second.query('ROLLBACK');
+        first.release();
+        second.release();
+      }
+      assert.equal(
+        await prisma.booking.count({
+          where: { specialistId: alice.id, startsAt: { gte: new Date(raceStart) } },
+        }),
+        1,
+      );
+    } finally {
+      await prisma.$disconnect();
+    }
+  });
+});
+
 test('Prisma deploy is repeatable and preserves database constraints and defaults', async () => {
   await withDatabase(async (pool, schema) => {
     await migrate(schema, 'deploy');
@@ -69,6 +187,7 @@ test('Prisma deploy is repeatable and preserves database constraints and default
       '0_init',
       '20261110000100_add_specialists_and_service_assignments',
       '20261112000100_add_specialist_working_periods',
+      '20261118000100_add_bookings',
     ]);
     assert.ok(history.rows.every((row) => row.finished_at));
     const { rows: businesses } = await pool.query(
@@ -151,7 +270,7 @@ test('baselining existing tables preserves records and does not recreate tables'
       tableBefore,
     );
     assert.equal((await pool.query('SELECT * FROM businesses')).rowCount, 1);
-    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 3);
+    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 4);
   });
 });
 

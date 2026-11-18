@@ -291,6 +291,21 @@ active specialist's assignment, and reads only working periods for the requested
 weekday. The route passes those inputs and the current instant to the slot calculator.
 These are schedule-derived slots for display; booking conflict checks are future work.
 
+## Booking storage
+
+The Prisma `Booking` model stores start and end instants as `timestamptz`. Each
+booking keeps its own end instant when the service duration changes. Two composite
+foreign keys require the specialist and service to belong to the booking's business.
+The booking references those records directly so removing a service assignment can
+preserve booking history. The booking write flow must validate active service
+assignments, working hours, and future start times.
+
+An active booking has `cancelledAt = null`. PostgreSQL rejects overlapping active
+intervals for the same specialist, including bookings for different services and
+concurrent writes. Adjacent intervals are allowed. Setting `cancelledAt` releases
+the interval while retaining the row. A conflict raises SQLSTATE `23P01`.
+See the [booking migration notes](prisma/migrations/README.md#bookings) for the constraint.
+
 ## Demonstration data
 
 After migrations and client generation, populate the local development database:
