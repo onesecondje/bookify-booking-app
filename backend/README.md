@@ -264,8 +264,8 @@ Starts at or before `now` are omitted. Each slot must fit entirely in one resolv
 working period; adjacent periods are not merged. Results contain UTC `startsAt` and
 `endsAt` strings and are sorted by their actual instants, including repeated hours.
 
-The result represents future schedule slots, not complete booking availability.
-Booking and date exceptions are future work. Tests exercise demo lunch/weekend
+The result represents future schedule slots. Filtering active bookings and date
+exceptions is future work. Tests exercise demo lunch/weekend
 rules, invalid inputs, past starts, next midnight, DST gaps/folds, elapsed duration,
 uncertain boundaries, and preservation of input arrays.
 
@@ -289,7 +289,8 @@ use the standard `500 INTERNAL_SERVER_ERROR`.
 The repository scopes the query to the business and active service, follows the
 active specialist's assignment, and reads only working periods for the requested
 weekday. The route passes those inputs and the current instant to the slot calculator.
-These are schedule-derived slots for display; booking conflict checks are future work.
+The display endpoint currently lists schedule-derived slots. The booking POST
+checks conflicts against active bookings at insert time.
 
 ## Booking storage
 
@@ -297,14 +298,37 @@ The Prisma `Booking` model stores start and end instants as `timestamptz`. Each
 booking keeps its own end instant when the service duration changes. Two composite
 foreign keys require the specialist and service to belong to the booking's business.
 The booking references those records directly so removing a service assignment can
-preserve booking history. The booking write flow must validate active service
-assignments, working hours, and future start times.
+preserve booking history.
 
 An active booking has `cancelledAt = null`. PostgreSQL rejects overlapping active
 intervals for the same specialist, including bookings for different services and
 concurrent writes. Adjacent intervals are allowed. Setting `cancelledAt` releases
 the interval while retaining the row. A conflict raises SQLSTATE `23P01`.
 See the [booking migration notes](prisma/migrations/README.md#bookings) for the constraint.
+
+## Create a booking
+
+`POST /api/businesses/:businessId/services/:serviceId/specialists/:specialistId/bookings`
+accepts a JSON object with `date` (a `YYYY-MM-DD` business calendar day) and
+`startsAt` (a UTC timestamp ending in `Z`). Send the selected slot's start from
+the availability response. The server recomputes slots using the current active
+assignment, schedule, service duration, business time zone, and current time,
+then takes both stored endpoints from the matching slot. Extra fields such as
+`endsAt` are ignored.
+
+- `201` returns `{ booking: { id, businessId, serviceId, specialistId, startsAt, endsAt } }`
+  with UTC timestamps.
+- `400` covers invalid IDs, body, date, or timestamp.
+- `404` covers a missing business, unavailable service, or unavailable assignment.
+- `409 SLOT_UNAVAILABLE` means that the requested start is no longer offered
+  for that date, including past starts and starts outside the schedule.
+- `409 BOOKING_CONFLICT` means that an active booking overlaps that interval.
+
+The parameterized INSERT targets the PostgreSQL exclusion constraint with
+`ON CONFLICT ON CONSTRAINT bookings_no_active_overlap DO NOTHING`. An empty
+result becomes `BOOKING_CONFLICT`. Other database failures use the standard error
+handler. This public endpoint creates bookings against the public catalogue.
+Contact details and customer or business booking management are separate steps.
 
 ## Demonstration data
 
@@ -550,7 +574,7 @@ curl.exe -i http://localhost:4000/api/missing
 ```
 
 Expect `404` with `NOT_FOUND` for the first request and `400` with `INVALID_JSON`
-for the second. No booking or other POST endpoints have been implemented yet.
+for the second.
 
 ## Verification
 

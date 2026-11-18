@@ -11,7 +11,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.ts';
 import { createApp } from '../src/app.ts';
 
-test('GET service specialists HTTP contract', async (t) => {
+test('Specialist selection, availability and booking HTTP contracts', async (t) => {
   const schema = `bookify_test_${randomUUID().replaceAll('-', '')}`;
   const admin = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -34,6 +34,7 @@ test('GET service specialists HTTP contract', async (t) => {
       '0_init',
       '20261110000100_add_specialists_and_service_assignments',
       '20261112000100_add_specialist_working_periods',
+      '20261118000100_add_bookings',
     ]) {
       await pool.query(
         await readFile(
@@ -161,6 +162,120 @@ test('GET service specialists HTTP contract', async (t) => {
         }
       },
     );
+
+    await t.test('creates a server-validated booking and maps overlaps to HTTP 409', async () => {
+      const date = '2099-01-06';
+      const startsAt = `${date}T08:00:00Z`;
+      const body = { date, startsAt };
+      await prisma.specialistWorkingPeriod.create({
+        data: {
+          businessId: business.id,
+          specialistId: first.id,
+          weekday: 2,
+          startMinute: 540,
+          endMinute: 720,
+        },
+      });
+      const book = (
+        payload = body,
+        specialistId = first.id,
+        serviceId = service.id,
+        businessId = business.id,
+      ) =>
+        globalThis.fetch(
+          `${origin}/api/businesses/${businessId}/services/${serviceId}/specialists/${specialistId}/bookings`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
+        );
+      for (const [response, status, code] of [
+        [await book([]), 400, 'INVALID_BOOKING_BODY'],
+        [await book({ ...body, date: '2099-02-29' }), 400, 'INVALID_DATE'],
+        [await book({ date }), 400, 'INVALID_STARTS_AT'],
+        [await book({ ...body, startsAt: `${date}T09:00:00+01:00` }), 400, 'INVALID_STARTS_AT'],
+        [await book(body, 'bad'), 400, 'INVALID_SPECIALIST_ID'],
+        [await book(body, first.id, 'bad'), 400, 'INVALID_SERVICE_ID'],
+        [await book(body, first.id, service.id, 'bad'), 400, 'INVALID_BUSINESS_ID'],
+        [await book(body, first.id, service.id, randomUUID()), 404, 'BUSINESS_NOT_FOUND'],
+        [await book(body, first.id, foreign.id), 404, 'SERVICE_NOT_FOUND'],
+        [await book(body, first.id, inactive.id), 404, 'SERVICE_NOT_FOUND'],
+        [await book(body, unassigned.id), 404, 'SPECIALIST_NOT_FOUND'],
+        [await book(body, disabled.id), 404, 'SPECIALIST_NOT_FOUND'],
+        [await book(body, foreignSpecialist.id), 404, 'SPECIALIST_NOT_FOUND'],
+        [await book({ ...body, startsAt: `${date}T08:01:00Z` }), 409, 'SLOT_UNAVAILABLE'],
+        [await book({ ...body, startsAt: `${date}T07:45:00Z` }), 409, 'SLOT_UNAVAILABLE'],
+        [await book({ ...body, startsAt: `${date}T10:45:00Z` }), 409, 'SLOT_UNAVAILABLE'],
+        [await book({ ...body, date: '2099-01-05' }), 409, 'SLOT_UNAVAILABLE'],
+        [
+          await book({ date: '2000-01-04', startsAt: '2000-01-04T08:00:00Z' }),
+          409,
+          'SLOT_UNAVAILABLE',
+        ],
+      ]) {
+        assert.equal(response.status, status);
+        assert.equal((await response.json()).error.code, code);
+      }
+      assert.equal(await prisma.booking.count(), 0);
+
+      const created = await book({ ...body, endsAt: `${date}T08:01:00Z` });
+      assert.equal(created.status, 201);
+      const { booking } = await created.json();
+      assert.deepEqual(booking, {
+        id: booking.id,
+        businessId: business.id,
+        serviceId: service.id,
+        specialistId: first.id,
+        startsAt: `${date}T08:00:00.000Z`,
+        endsAt: `${date}T08:30:00.000Z`,
+      });
+      const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      assert.equal(persisted.cancelledAt, null);
+      assert.equal(persisted.endsAt.toISOString(), booking.endsAt);
+      await expectError(
+        await book({ ...body, startsAt: `${date}T08:15:00Z` }),
+        409,
+        'BOOKING_CONFLICT',
+        'The selected time overlaps an existing booking.',
+      );
+      assert.equal((await book({ ...body, startsAt: `${date}T08:30:00Z` })).status, 201);
+      await prisma.booking.update({ where: { id: booking.id }, data: { cancelledAt: new Date() } });
+      assert.equal((await book(body)).status, 201);
+
+      const competing = await Promise.all([
+        book({ ...body, startsAt: `${date}T09:00:00Z` }),
+        book({ ...body, startsAt: `${date}T09:15:00Z` }),
+      ]);
+      const [winner, conflict] = competing[0].status === 201 ? competing : competing.reverse();
+      assert.equal(winner.status, 201);
+      await winner.json();
+      assert.equal(conflict.status, 409);
+      assert.equal((await conflict.json()).error.code, 'BOOKING_CONFLICT');
+      assert.equal(
+        await prisma.booking.count({
+          where: { specialistId: first.id, startsAt: { gte: new Date(`${date}T09:00:00Z`) } },
+        }),
+        1,
+      );
+
+      const foldDate = '2099-10-25';
+      await prisma.specialistWorkingPeriod.create({
+        data: {
+          businessId: business.id,
+          specialistId: first.id,
+          weekday: 7,
+          startMinute: 60,
+          endMinute: 240,
+        },
+      });
+      for (const hour of ['00', '01']) {
+        const utcStart = `${foldDate}T${hour}:30:00`;
+        const response = await book({ date: foldDate, startsAt: `${utcStart}.000Z` });
+        assert.equal(response.status, 201);
+        assert.equal((await response.json()).booking.startsAt, `${utcStart}.000Z`);
+      }
+    });
 
     await t.test(
       'filters by business, assignment and active status, orders ties and selects public fields',
