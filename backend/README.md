@@ -192,9 +192,84 @@ it in `public` beforehand. CHECK and exclusion constraints are maintained in SQL
 Prisma's schema and migration diff do not fully describe these rules.
 
 The explicit demo seed includes weekly working periods. There is no schedule API,
-date exception handling, timezone conversion, availability calculation or
+date exception handling, complete availability calculation or
 booking functionality. Apply the reviewed migration explicitly with `db:migrate`;
 API startup does not apply it. See the migration README for verification details.
+
+## Local start candidates
+
+`src/availability/local-starts.ts` generates candidate start minutes for a single
+local day. Each candidate fits the full service duration inside one working period;
+the default 15-minute grid is anchored to each period's start. Results are sorted
+without mutating the input. Invalid or overlapping intervals are rejected. Adjacent
+periods remain separate, so candidates do not span their boundary.
+
+These are intermediate wall-clock candidates, not available appointment instants.
+The helper itself does not resolve timezones/DST, remove past times or subtract
+bookings. The schedule-slot calculation below composes it with UTC resolution;
+neither helper is connected to an HTTP endpoint or UI yet.
+
+## Local date/time to UTC
+
+`src/availability/local-time.ts` exports `resolveLocalTime(date, minute, timeZone)`.
+It accepts a strict, valid ISO date (`YYYY-MM-DD`, year 0001-9999), integer minute
+0-1440 and a runtime-validated named IANA timezone. Minute 1440 is next local
+midnight, not a fixed 24-hour UTC addition. UTC and recognized IANA aliases are
+accepted; numeric offsets and whitespace-padded identifiers are rejected.
+
+The helper imports the pinned `@js-temporal/polyfill` package because the project's
+Node.js 24 runtime does not expose Temporal. It does not patch globals. Conversion
+uses explicit business timezone rules, never the server's default timezone. Rules
+come from the runtime's timezone data, which should be kept current with Node/ICU.
+
+Results use `LocalTimeStatus` from `src/enums/local-time-status.enum.ts`:
+
+| Status        | Data                     | Meaning                                        |
+| ------------- | ------------------------ | ---------------------------------------------- |
+| `unique`      | `utc`                    | Exactly one matching UTC instant               |
+| `ambiguous`   | `earlierUtc`, `laterUtc` | A repeated clock time has two UTC instants     |
+| `nonexistent` | No instant               | The clock time was skipped by an offset change |
+
+The resolver compares Temporal's earlier/later interpretations and round-trips
+them to the requested clock time. Gaps are not silently shifted; folds are not
+silently resolved. Invalid inputs throw RangeError. The helper describes ambiguity;
+the schedule-slot calculation below explicitly decides which instants to offer and
+how to handle working-period boundaries. The resolver itself selects no policy.
+
+Tests cover winter/summer offsets, Warsaw gaps/folds, Lord Howe half-hour changes,
+Apia's skipped date, leap dates, year boundaries and 23/25-hour local days. The
+resolver is used by schedule-slot generation but is not connected to persistence,
+HTTP or UI. Service duration is added as elapsed minutes to a resolved instant;
+converting a separate local end time is not sufficient across offset changes.
+
+## Schedule slots for a date
+
+`src/availability/schedule-slots.ts` exports `generateScheduleSlots` with explicit
+date, business timezone, one specialist's weekly periods, service duration, optional
+start step (default 15 minutes), and `now` as an exact instant with an offset or Z.
+The function is pure: it reads no clock or database and does not mutate its inputs.
+The caller must scope the schedule and validate business/service/specialist relations.
+
+The calculation validates inputs, selects the ISO weekday, resolves each selected
+period's opening/closing to UTC, generates its local start grid, and resolves each
+start. Nonexistent starts are omitted; ambiguous starts yield both distinct UTC
+instants. If a period boundary is nonexistent or ambiguous, that whole period is
+omitted and `unresolvedPeriodCount` is incremented. This conservative rule avoids
+guessing working hours. Other valid periods on the day are still processed.
+
+The local grid uses a one-minute minimum fit only to enumerate starts before the
+closing boundary. Actual service-duration fit is checked after UTC conversion:
+`endsAt = startsAt + durationMinutes` in elapsed time. This is essential on short
+and long DST days; local `start + duration` is not a correct final fit check.
+Starts at or before `now` are omitted. Each slot must fit entirely in one resolved
+working period; adjacent periods are not merged. Results contain UTC `startsAt` and
+`endsAt` strings and are sorted by their actual instants, including repeated hours.
+
+The result represents future schedule slots, not complete booking availability.
+Active bookings and date exceptions are not subtracted, no booking is reserved,
+and there is no availability endpoint/UI yet. Tests exercise demo lunch/weekend
+rules, invalid inputs, past starts, next midnight, DST gaps/folds, elapsed duration,
+uncertain boundaries, and preservation of input arrays.
 
 ## Demonstration data
 
