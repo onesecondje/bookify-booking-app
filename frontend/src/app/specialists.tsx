@@ -12,6 +12,7 @@ export async function Specialists({
   specialistId,
   date,
   startsAt,
+  bookingConflict,
 }: SpecialistSelectionProps) {
   const result = await getServiceSpecialists(service.id);
 
@@ -119,7 +120,6 @@ export async function Specialists({
                 <dd>{selectedSpecialist.name}</dd>
               </div>
             </dl>
-            <p>No appointment has been booked.</p>
             <Link className={styles.retry} href={`/?serviceId=${service.id}`} scroll={false}>
               Clear specialist selection
             </Link>
@@ -129,6 +129,7 @@ export async function Specialists({
             specialistId={selectedSpecialist.id}
             date={date}
             startsAt={startsAt}
+            bookingConflict={bookingConflict}
           />
         </>
       )}

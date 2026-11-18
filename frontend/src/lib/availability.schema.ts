@@ -1,6 +1,7 @@
 import { availabilityNotFoundStatuses } from './constants/availability.constants';
 import type { Availability, AvailabilitySlot } from './types/availability.types';
 import { isLocalDate } from './validation/local-date';
+import { isUtcInstant } from './validation/utc-instant';
 
 function isTimeZone(value: unknown): value is string {
   if (typeof value !== 'string' || value.length === 0 || value.trim() !== value) return false;
@@ -11,22 +12,6 @@ function isTimeZone(value: unknown): value is string {
   } catch {
     return false;
   }
-}
-
-function isUtcInstant(value: unknown): value is string {
-  if (
-    typeof value !== 'string' ||
-    !/^(?:\d{4}|[+-]\d{6})-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value)
-  ) {
-    return false;
-  }
-
-  const instant = new Date(value);
-  // Date can normalize invalid calendar dates and 24:00.
-  return (
-    Number.isFinite(instant.getTime()) &&
-    instant.toISOString().split('.')[0] === value.replace(/(?:\.\d+)?Z$/, '')
-  );
 }
 
 function isAvailabilitySlot(value: unknown): value is AvailabilitySlot {

@@ -12,7 +12,7 @@ export async function Services({ searchParams }: ServiceSelectionProps) {
   // Fetch at request time, so building the frontend does not require a running API.
   await connection();
   const result = await getBusinessServices();
-  const { serviceId, specialistId, date, startsAt } = await searchParams;
+  const { serviceId, specialistId, date, startsAt, bookingConflict } = await searchParams;
 
   if (result.status === CatalogueLoadStatus.Unavailable) {
     return (
@@ -110,6 +110,7 @@ export async function Services({ searchParams }: ServiceSelectionProps) {
               specialistId={specialistId}
               date={date}
               startsAt={startsAt}
+              bookingConflict={bookingConflict === '1'}
             />
           </Suspense>
         )}

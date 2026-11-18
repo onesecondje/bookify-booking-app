@@ -1,4 +1,5 @@
 import type { ServiceSummary } from '@/lib/types/services.types';
+import type { BookingSelection } from '@/lib/types/booking-confirmation.types';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -7,6 +8,7 @@ export type ServiceSelectionProps = { searchParams: Promise<SearchParams> };
 export type AppointmentSearchParams = {
   date: SearchParams[string];
   startsAt: SearchParams[string];
+  bookingConflict: boolean;
 };
 
 export type SpecialistSelectionProps = AppointmentSearchParams & {
@@ -19,4 +21,12 @@ export type AppointmentSelectionProps = AppointmentSearchParams & {
   specialistId: string;
 };
 
-export type AvailabilitySlotsProps = Omit<AppointmentSelectionProps, 'date'> & { date: string };
+export type AvailabilitySlotsProps = Omit<AppointmentSelectionProps, 'date' | 'bookingConflict'> & {
+  date: string;
+};
+
+export type BookingConfirmationProps = {
+  selection: BookingSelection;
+  timeLabel: string;
+  timeZone: string;
+};

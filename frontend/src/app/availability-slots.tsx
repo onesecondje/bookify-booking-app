@@ -2,6 +2,7 @@ import { AvailabilityLoadStatus } from '@/enums/availability-load-status.enum';
 import { getSpecialistAvailability } from '@/lib/availability';
 import { formatSlotTimes } from '@/lib/format-slot-times';
 import Link from 'next/link';
+import { BookingConfirmation } from './booking-confirmation';
 import styles from './page.module.css';
 import type { AvailabilitySlotsProps } from './types/booking-selection.types';
 
@@ -40,7 +41,8 @@ export async function AvailabilitySlots({
   }
 
   const { timeZone, slots, unresolvedPeriodCount } = result.availability;
-  const selectedSlot = slots.find((slot) => slot.startsAt === startsAt);
+  const selectedIndex = slots.findIndex((slot) => slot.startsAt === startsAt);
+  const selectedSlot = slots[selectedIndex];
   const labels = formatSlotTimes(slots, timeZone);
 
   return (
@@ -77,9 +79,21 @@ export async function AvailabilitySlots({
         </ul>
       )}
       {selectedSlot && (
-        <Link href={`/?${dateQuery}`} className={styles.clearTime} prefetch={false} scroll={false}>
-          Clear time selection
-        </Link>
+        <>
+          <Link
+            href={`/?${dateQuery}`}
+            className={styles.clearTime}
+            prefetch={false}
+            scroll={false}
+          >
+            Clear time selection
+          </Link>
+          <BookingConfirmation
+            selection={{ serviceId, specialistId, date, startsAt: selectedSlot.startsAt }}
+            timeLabel={labels[selectedIndex]}
+            timeZone={timeZone}
+          />
+        </>
       )}
       {unresolvedPeriodCount > 0 && <p>Some working hours could not be shown for this date.</p>}
     </div>

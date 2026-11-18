@@ -9,6 +9,7 @@ export function AppointmentSelection({
   specialistId,
   date,
   startsAt,
+  bookingConflict,
 }: AppointmentSelectionProps) {
   const validDate = isLocalDate(date) ? date : undefined;
   const invalidDate = date !== undefined && validDate === undefined;
@@ -16,6 +17,9 @@ export function AppointmentSelection({
   return (
     <section className={styles.state} aria-labelledby="appointment-title">
       <h3 id="appointment-title">Choose a date and time</h3>
+      {validDate && bookingConflict && (
+        <p role="status">That time is no longer available. Please choose another time or date.</p>
+      )}
       <form action="/" method="get" className={styles.dateForm}>
         <input type="hidden" name="serviceId" value={serviceId} />
         <input type="hidden" name="specialistId" value={specialistId} />

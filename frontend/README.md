@@ -2,8 +2,8 @@
 
 Next.js 16 App Router, React 19, TypeScript, and CSS Modules. The home page renders
 a public service catalogue from the Express API. Users can select a service through
-the URL, choose an active assigned specialist and review their selection. Booking
-is not implemented yet.
+the URL, choose an active assigned specialist, select a date and slot, and confirm
+an appointment.
 
 ## Local development
 
@@ -116,8 +116,8 @@ before a summary is displayed. Repeated/malformed IDs and unavailable specialist
 show explicit states. Uppercase UUIDs are accepted. A specialist ID without a service
 does not produce a selection. Even a single specialist requires explicit selection.
 
-The summary shows service, duration and specialist, and states that no appointment
-has been booked. Clearing the specialist retains the service. Changing the service
+The summary shows service, duration and specialist. Clearing the specialist retains
+the service. Changing the service
 clears the specialist, and retrying a failed load retains a well-formed specialist ID
 for revalidation.
 
@@ -137,8 +137,21 @@ failure keeps the date and the single requested start for revalidation.
 
 Times use the business time zone from the response. When two slots share the same
 formatted time, their UTC offsets are also shown. The date is a calendar day in
-the business time zone. Slots reflect the working schedule, and choosing one does
-not create a booking.
+the business time zone. Slots reflect the working schedule and active bookings.
+
+## Booking confirmation
+
+The confirm button appears after a selected start matches a slot in the current
+availability response. A Next.js Server Action submits only the selected date and
+UTC start to the Express booking endpoint. The button is disabled while the request
+is pending. A validated `201` displays the date, local time and booking reference.
+The receipt is held in form state for the current visit.
+
+On `409`, the action redirects to the same service, specialist and date without the
+stale start. The page reloads availability and prompts the user to select another
+time. Other failures display a message asking the user to refresh availability
+before trying again. Express validates the slot and PostgreSQL prevents a double
+booking during the write.
 
 ## Verification
 
