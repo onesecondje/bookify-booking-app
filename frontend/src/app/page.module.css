@@ -185,8 +185,58 @@ a.service:hover {
 .retry:hover {
   background: #203c2b;
 }
+.dateForm {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+}
+.dateField {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.dateField input,
+.slot {
+  border: 1px solid #dce3da;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+}
+.dateForm .retry {
+  margin-top: 0;
+}
+.slotResults {
+  display: grid;
+  gap: 10px;
+}
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.slot:hover,
+.slot.selectedService {
+  border-color: #294a37;
+}
+.clearTime {
+  justify-self: start;
+  font-size: 14px;
+  text-decoration: underline;
+}
 .page a:focus-visible,
-.page button:focus-visible {
+.page button:focus-visible,
+.dateField input:focus-visible {
   outline: 3px solid #62824f;
   outline-offset: 5px;
 }

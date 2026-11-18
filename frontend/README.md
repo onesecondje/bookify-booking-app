@@ -119,7 +119,25 @@ does not produce a selection. Even a single specialist requires explicit selecti
 The summary shows service, duration and specialist, and states that no appointment
 has been booked. Clearing the specialist retains the service. Changing the service
 clears the specialist, and retrying a failed load retains a well-formed specialist ID
-for revalidation. Schedules, appointment availability and booking remain future work.
+for revalidation.
+
+## Date and time selection
+
+Once the selected specialist matches the active assignment, the date form adds a
+`date=YYYY-MM-DD` query parameter. Its GET submission retains the service and
+specialist IDs and clears the previous time. Changing the service or specialist
+clears the date and time. A missing or invalid date does not call the availability API.
+
+`src/app/appointment-selection.tsx` loads schedule slots in a Suspense boundary using
+the server-only `getSpecialistAvailability` loader. Slot links add the UTC `startsAt`
+to the URL. The server highlights a time only when the start matches a slot in the
+fresh response. An expired or invalid selection can be replaced. Retrying a temporary
+failure keeps the date and the single requested start for revalidation.
+
+Times use the business time zone from the response. When two slots share the same
+formatted time, their UTC offsets are also shown. The date is a calendar day in
+the business time zone. Slots reflect the working schedule, and choosing one does
+not create a booking.
 
 ## Verification
 

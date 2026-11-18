@@ -1,11 +1,18 @@
 import { SpecialistsLoadStatus } from '@/enums/specialists-load-status.enum';
 import { getServiceSpecialists } from '@/lib/specialists';
+import { isLocalDate } from '@/lib/validation/local-date';
 import { isUuid } from '@/lib/validation/uuid';
 import Link from 'next/link';
+import { AppointmentSelection } from './appointment-selection';
 import styles from './page.module.css';
 import type { SpecialistSelectionProps } from './types/booking-selection.types';
 
-export async function Specialists({ service, specialistId }: SpecialistSelectionProps) {
+export async function Specialists({
+  service,
+  specialistId,
+  date,
+  startsAt,
+}: SpecialistSelectionProps) {
   const result = await getServiceSpecialists(service.id);
 
   if (result.status === SpecialistsLoadStatus.Unavailable) {
@@ -16,6 +23,10 @@ export async function Specialists({ service, specialistId }: SpecialistSelection
         <form action="/" method="get">
           <input type="hidden" name="serviceId" value={service.id} />
           {isUuid(specialistId) && <input type="hidden" name="specialistId" value={specialistId} />}
+          {isLocalDate(date) && <input type="hidden" name="date" value={date} />}
+          {isLocalDate(date) && typeof startsAt === 'string' && (
+            <input type="hidden" name="startsAt" value={startsAt} />
+          )}
           <button className={styles.retry} type="submit">
             Try again
           </button>
@@ -91,27 +102,35 @@ export async function Specialists({ service, specialistId }: SpecialistSelection
           <p>This specialist is not currently available for this service. Please choose another.</p>
         </div>
       ) : (
-        <section className={styles.state} aria-labelledby="selection-title">
-          <h3 id="selection-title">Your selection</h3>
-          <dl className={styles.summary}>
-            <div>
-              <dt>Service</dt>
-              <dd>{service.name}</dd>
-            </div>
-            <div>
-              <dt>Duration</dt>
-              <dd>{service.durationMinutes} min</dd>
-            </div>
-            <div>
-              <dt>Specialist</dt>
-              <dd>{selectedSpecialist.name}</dd>
-            </div>
-          </dl>
-          <p>No appointment has been booked.</p>
-          <Link className={styles.retry} href={`/?serviceId=${service.id}`} scroll={false}>
-            Clear specialist selection
-          </Link>
-        </section>
+        <>
+          <section className={styles.state} aria-labelledby="selection-title">
+            <h3 id="selection-title">Your selection</h3>
+            <dl className={styles.summary}>
+              <div>
+                <dt>Service</dt>
+                <dd>{service.name}</dd>
+              </div>
+              <div>
+                <dt>Duration</dt>
+                <dd>{service.durationMinutes} min</dd>
+              </div>
+              <div>
+                <dt>Specialist</dt>
+                <dd>{selectedSpecialist.name}</dd>
+              </div>
+            </dl>
+            <p>No appointment has been booked.</p>
+            <Link className={styles.retry} href={`/?serviceId=${service.id}`} scroll={false}>
+              Clear specialist selection
+            </Link>
+          </section>
+          <AppointmentSelection
+            serviceId={service.id}
+            specialistId={selectedSpecialist.id}
+            date={date}
+            startsAt={startsAt}
+          />
+        </>
       )}
     </>
   );
