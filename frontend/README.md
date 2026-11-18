@@ -52,7 +52,8 @@ GET /api/businesses/:businessId/services from Express. Express owns Prisma queri
 and business rules; Next.js does not connect to PostgreSQL.
 
 The data module delegates server environment validation to src/lib/config.ts and
-response parsing/types to src/lib/services.schema.ts. Configuration is read inside
+response parsing to src/lib/services.schema.ts, with types in
+src/lib/types/services.types.ts. Configuration is read inside
 the request function, so invalid settings still produce the catalogue error state.
 No generic HTTP client is introduced.
 

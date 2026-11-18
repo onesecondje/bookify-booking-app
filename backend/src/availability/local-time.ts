@@ -1,11 +1,7 @@
 import { LocalTimeStatus } from '../enums/local-time-status.enum.js';
 import { isTimeZone } from '../validation/time-zone.js';
 import { parseLocalDate } from '../validation/local-date.js';
-
-type LocalTimeResult =
-  | { status: LocalTimeStatus.Unique; utc: string }
-  | { status: LocalTimeStatus.Ambiguous; earlierUtc: string; laterUtc: string }
-  | { status: LocalTimeStatus.Nonexistent };
+import type { LocalTimeResult } from './types/local-time.types.js';
 
 // Resolve a local clock reading without silently shifting gaps or choosing a fold.
 export function resolveLocalTime(date: string, minute: number, timeZone: string): LocalTimeResult {

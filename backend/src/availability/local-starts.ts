@@ -1,7 +1,4 @@
-export type WorkingPeriodMinutes = {
-  startMinute: number;
-  endMinute: number;
-};
+import type { WorkingPeriodMinutes } from './types/schedule-slots.types.js';
 
 // Generate local wall-clock candidates for one day, before timezone/DST resolution.
 // Adjacent periods remain separate; each candidate must fit inside one period.

@@ -1,17 +1,11 @@
 import { SpecialistsLoadStatus } from '@/enums/specialists-load-status.enum';
-import type { ServiceSummary } from '@/lib/services.schema';
 import { getServiceSpecialists } from '@/lib/specialists';
 import { isUuid } from '@/lib/validation/uuid';
 import Link from 'next/link';
 import styles from './page.module.css';
+import type { SpecialistSelectionProps } from './types/booking-selection.types';
 
-export async function Specialists({
-  service,
-  specialistId,
-}: {
-  service: ServiceSummary;
-  specialistId: string | string[] | undefined;
-}) {
+export async function Specialists({ service, specialistId }: SpecialistSelectionProps) {
   const result = await getServiceSpecialists(service.id);
 
   if (result.status === SpecialistsLoadStatus.Unavailable) {

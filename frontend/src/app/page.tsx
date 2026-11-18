@@ -1,20 +1,20 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { connection } from 'next/server';
+import { CatalogueLoadStatus } from '@/enums/catalogue-load-status.enum';
 import { getBusinessServices } from '@/lib/services';
 import { isUuid } from '@/lib/validation/uuid';
 import { Specialists } from './specialists';
 import styles from './page.module.css';
+import type { ServiceSelectionProps } from './types/booking-selection.types';
 
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
-
-async function Services({ searchParams }: { searchParams: SearchParams }) {
+async function Services({ searchParams }: ServiceSelectionProps) {
   // Fetch at request time, so building the frontend does not require a running API.
   await connection();
   const result = await getBusinessServices();
   const { serviceId, specialistId } = await searchParams;
 
-  if (result.status === 'unavailable') {
+  if (result.status === CatalogueLoadStatus.Unavailable) {
     return (
       <div className={styles.state} role="status">
         <h3>Services are temporarily unavailable</h3>
@@ -28,7 +28,7 @@ async function Services({ searchParams }: { searchParams: SearchParams }) {
     );
   }
 
-  if (result.status === 'not-found') {
+  if (result.status === CatalogueLoadStatus.NotFound) {
     return (
       <div className={styles.state} role="status">
         <h3>Business not found</h3>
@@ -113,7 +113,7 @@ async function Services({ searchParams }: { searchParams: SearchParams }) {
   );
 }
 
-export default function Home({ searchParams }: { searchParams: SearchParams }) {
+export default function Home({ searchParams }: ServiceSelectionProps) {
   return (
     <div className={styles.page}>
       <header className={styles.header}>

@@ -1,10 +1,12 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { LocalTimeStatus } from '../enums/local-time-status.enum.js';
-import { generateLocalStartMinutes, type WorkingPeriodMinutes } from './local-starts.js';
+import { generateLocalStartMinutes } from './local-starts.js';
 import { resolveLocalTime } from './local-time.js';
-
-export type WeeklyWorkingPeriod = WorkingPeriodMinutes & { weekday: number };
-export type ScheduleSlot = { startsAt: string; endsAt: string };
+import type {
+  ScheduleSlot,
+  ScheduleSlotOptions,
+  ScheduleSlotsResult,
+} from './types/schedule-slots.types.js';
 
 // Pure calculation: the caller supplies the current instant for reproducible tests.
 // These slots reflect schedules only; bookings and date exceptions are not subtracted yet.
@@ -15,14 +17,7 @@ export function generateScheduleSlots({
   durationMinutes,
   stepMinutes = 15,
   now,
-}: {
-  date: string;
-  timeZone: string;
-  periods: readonly WeeklyWorkingPeriod[];
-  durationMinutes: number;
-  stepMinutes?: number;
-  now: string;
-}): { slots: ScheduleSlot[]; unresolvedPeriodCount: number } {
+}: ScheduleSlotOptions): ScheduleSlotsResult {
   // Validate date/zone even on a day with no working periods.
   resolveLocalTime(date, 0, timeZone);
   const weekday = Temporal.PlainDate.from(date).dayOfWeek;

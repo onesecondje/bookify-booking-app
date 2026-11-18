@@ -4,6 +4,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import { parseLocalDate } from '../validation/local-date.js';
 import { isUuid } from '../validation/uuid.js';
 import { findAvailabilitySchedule } from './availability.repository.js';
+import { availabilityIdErrors } from './constants/availability.constants.js';
 import { generateScheduleSlots } from './schedule-slots.js';
 
 export function createAvailabilityRouter(database: PrismaClient): Router {
@@ -13,12 +14,8 @@ export function createAvailabilityRouter(database: PrismaClient): Router {
     '/businesses/:businessId/services/:serviceId/specialists/:specialistId/availability',
     async (req, res) => {
       const { businessId, serviceId, specialistId } = req.params;
-      for (const [name, value, code] of [
-        ['businessId', businessId, ApiErrorCode.InvalidBusinessId],
-        ['serviceId', serviceId, ApiErrorCode.InvalidServiceId],
-        ['specialistId', specialistId, ApiErrorCode.InvalidSpecialistId],
-      ] as const) {
-        if (!isUuid(value)) {
+      for (const [name, code] of availabilityIdErrors) {
+        if (!isUuid(req.params[name])) {
           res.status(400).json({ error: { code, message: `${name} must be a valid UUID.` } });
           return;
         }

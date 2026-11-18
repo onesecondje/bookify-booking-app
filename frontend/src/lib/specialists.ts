@@ -1,22 +1,9 @@
 import 'server-only';
 import { SpecialistsLoadStatus } from '../enums/specialists-load-status.enum';
 import { getCatalogueConfig } from './config';
-import {
-  parseSpecialistsNotFoundCode,
-  parseSpecialistsResponse,
-  type SpecialistSummary,
-} from './specialists.schema';
+import { parseSpecialistsNotFoundCode, parseSpecialistsResponse } from './specialists.schema';
+import type { SpecialistsResult } from './types/specialists.types';
 import { isUuid } from './validation/uuid';
-
-type SpecialistsResult =
-  | { status: SpecialistsLoadStatus.Ready; specialists: SpecialistSummary[] }
-  | {
-      status:
-        | SpecialistsLoadStatus.InvalidServiceId
-        | SpecialistsLoadStatus.BusinessNotFound
-        | SpecialistsLoadStatus.ServiceNotFound
-        | SpecialistsLoadStatus.Unavailable;
-    };
 
 export async function getServiceSpecialists(serviceId: string): Promise<SpecialistsResult> {
   if (!isUuid(serviceId)) return { status: SpecialistsLoadStatus.InvalidServiceId };
