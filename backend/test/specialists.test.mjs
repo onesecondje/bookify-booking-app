@@ -26,7 +26,9 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
     adapter: new PrismaPg(pool, { schema, disposeExternalPool: false }),
     log: [],
   });
-  const server = createApp(prisma).listen(0, '127.0.0.1');
+  const managedBusinessId = randomUUID();
+  const token = randomUUID().replaceAll('-', '');
+  const server = createApp(prisma, { businessId: managedBusinessId, token }).listen(0, '127.0.0.1');
   try {
     await once(server, 'listening');
     await admin.query(`CREATE SCHEMA "${schema}"`);
@@ -45,7 +47,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       );
     }
     const business = await prisma.business.create({
-      data: { name: 'Studio', timeZone: 'Europe/Warsaw' },
+      data: { id: managedBusinessId, name: 'Studio', timeZone: 'Europe/Warsaw' },
     });
     const other = await prisma.business.create({
       data: { name: 'Other', timeZone: 'Europe/Kyiv' },
@@ -231,6 +233,74 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         await prisma.booking.deleteMany({
           where: { id: { in: [otherSpecialistBooking.id, blocking.id, overnight.id] } },
         });
+      },
+    );
+
+    await t.test(
+      'business bookings require credentials and scope contacts to the managed business',
+      async () => {
+        const list = (id, authorization) =>
+          globalThis.fetch(`${origin}/api/businesses/${id}/bookings`, {
+            headers: authorization ? { Authorization: authorization } : {},
+          });
+        for (const authorization of [undefined, `Bearer ${'x'.repeat(32)}`]) {
+          const response = await list(business.id, authorization);
+          assert.equal(response.headers.get('www-authenticate'), 'Bearer');
+          await expectError(response, 401, 'UNAUTHORIZED', 'Business credentials are required.');
+        }
+        for (const id of [other.id, randomUUID()]) {
+          await expectError(
+            await list(id, `Bearer ${token}`),
+            403,
+            'FORBIDDEN',
+            'Access to this business is forbidden.',
+          );
+        }
+
+        const add = (businessId, serviceId, specialistId, day, extra = {}) =>
+          prisma.booking.create({
+            data: {
+              businessId,
+              serviceId,
+              specialistId,
+              startsAt: new Date(`${day}T08:00:00Z`),
+              endsAt: new Date(`${day}T08:30:00Z`),
+              ...extra,
+            },
+          });
+        const cancelled = await add(business.id, service.id, first.id, '2099-01-09', {
+          cancelledAt: new Date('2099-01-01T00:00:00Z'),
+        });
+        const upcoming = await add(business.id, service.id, first.id, '2099-01-08', {
+          customerName: 'Example Customer',
+          customerPhone: '+12025550123',
+        });
+        const past = await add(business.id, service.id, first.id, '2000-01-01');
+        const crossBusiness = await add(other.id, foreign.id, foreignSpecialist.id, '2099-01-08', {
+          customerName: 'Other Customer',
+          customerPhone: '+12025550124',
+        });
+        try {
+          const response = await list(business.id.toUpperCase(), `Bearer ${token}`);
+          assert.equal(response.status, 200);
+          assert.equal(response.headers.get('cache-control'), 'no-store');
+          assert.deepEqual(await response.json(), {
+            bookings: [upcoming, cancelled].map((booking) => ({
+              id: booking.id,
+              startsAt: booking.startsAt.toISOString(),
+              endsAt: booking.endsAt.toISOString(),
+              cancelledAt: booking.cancelledAt?.toISOString() ?? null,
+              customerName: booking.customerName,
+              customerPhone: booking.customerPhone,
+              service: { id: service.id, name: 'Haircut' },
+              specialist: { id: first.id, name: first.name },
+            })),
+          });
+        } finally {
+          await prisma.booking.deleteMany({
+            where: { id: { in: [upcoming.id, cancelled.id, past.id, crossBusiness.id] } },
+          });
+        }
       },
     );
 

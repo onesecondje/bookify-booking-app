@@ -4,7 +4,7 @@ import { createApp } from './app.js';
 import { config } from './config.js';
 import { closeDatabase, pool, prisma } from './db.js';
 
-const server = createServer(createApp(prisma));
+const server = createServer(createApp(prisma, config.businessBookingAccess));
 let shuttingDown = false;
 
 function errorCode(error: unknown): string {

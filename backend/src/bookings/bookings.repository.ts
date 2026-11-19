@@ -2,6 +2,27 @@ import type { ScheduleSlot } from '../availability/types/schedule-slots.types.js
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import type { BookingContact, BookingSelection, CreatedBooking } from './types/booking.types.js';
 
+export function findUpcomingBusinessBookings(
+  database: PrismaClient,
+  businessId: string,
+  now: Date,
+) {
+  return database.booking.findMany({
+    where: { businessId, startsAt: { gt: now } },
+    orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      startsAt: true,
+      endsAt: true,
+      cancelledAt: true,
+      customerName: true,
+      customerPhone: true,
+      service: { select: { id: true, name: true } },
+      specialist: { select: { id: true, name: true } },
+    },
+  });
+}
+
 export async function insertBooking(
   database: PrismaClient,
   {

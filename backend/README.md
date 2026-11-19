@@ -346,6 +346,23 @@ driver adapter metadata. The repository maps that combination to
 This public endpoint creates bookings against the public catalogue.
 Contact details are stored on the booking and omitted from the public response.
 
+## Business booking list
+
+`GET /api/businesses/:businessId/bookings` requires an
+`Authorization: Bearer <token>` header. Set `BOOKIFY_MANAGED_BUSINESS_ID` and
+`BOOKIFY_BUSINESS_BOOKINGS_TOKEN` in the backend environment to configure one
+business for the pilot. Generate a dedicated secret with
+`node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`.
+Keep it server-side and use HTTPS outside local development. With both settings
+empty, the endpoint denies access. Missing or invalid credentials return `401`.
+A valid token used with another business ID returns `403`.
+
+The response is `200 { bookings: [...] }`, sorted by start time and then ID.
+Each booking includes its ID, UTC start and end, cancellation time, customer
+name and phone, and the IDs and names of its service and specialist. Future
+cancelled bookings are included with `cancelledAt`; legacy contacts may be null.
+An empty list returns `200`. Responses use `Cache-Control: no-store`.
+
 ## Demonstration data
 
 After migrations and client generation, populate the local development database:

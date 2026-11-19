@@ -1,3 +1,5 @@
+import { parseBusinessBookingAccess } from './bookings/business-booking-access.js';
+
 const portValue = process.env.PORT ?? '4000';
 const port = Number(portValue);
 
@@ -27,4 +29,9 @@ try {
   throw new Error('DATABASE_URL must be a PostgreSQL URL with a host and database name.');
 }
 
-export const config = { port, databaseUrl };
+const businessBookingAccess = parseBusinessBookingAccess(
+  process.env.BOOKIFY_MANAGED_BUSINESS_ID,
+  process.env.BOOKIFY_BUSINESS_BOOKINGS_TOKEN,
+);
+
+export const config = { port, databaseUrl, businessBookingAccess };

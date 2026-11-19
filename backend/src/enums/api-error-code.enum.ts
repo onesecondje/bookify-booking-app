@@ -1,4 +1,6 @@
 export enum ApiErrorCode {
+  Unauthorized = 'UNAUTHORIZED',
+  Forbidden = 'FORBIDDEN',
   InvalidBusinessId = 'INVALID_BUSINESS_ID',
   InvalidServiceId = 'INVALID_SERVICE_ID',
   InvalidSpecialistId = 'INVALID_SPECIALIST_ID',
