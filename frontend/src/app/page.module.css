@@ -25,9 +25,10 @@
 .brand span {
   color: #5e7953;
 }
-.headerLabel {
+.dashboardLink {
   color: #5f6e62;
   font-size: 13px;
+  text-decoration: underline;
 }
 .main {
   width: min(100%, 896px);
@@ -266,9 +267,6 @@ a.service:hover {
 @media (max-width: 600px) {
   .header {
     padding: 20px 24px;
-  }
-  .headerLabel {
-    display: none;
   }
   .main {
     padding-top: 48px;

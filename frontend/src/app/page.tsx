@@ -11,7 +11,9 @@ export default function Home({ searchParams }: ServiceSelectionProps) {
         <Link className={styles.brand} href="/" aria-label="Bookify home">
           bookify<span aria-hidden="true">.</span>
         </Link>
-        <span className={styles.headerLabel}>A little time for you</span>
+        <a className={styles.dashboardLink} href="/business">
+          Business dashboard
+        </a>
       </header>
       <main className={styles.main}>
         <div className={styles.intro}>
