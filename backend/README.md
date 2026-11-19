@@ -337,10 +337,12 @@ then takes both stored endpoints from the matching slot. Extra fields such as
   for that date, including past starts and starts outside the schedule.
 - `409 BOOKING_CONFLICT` means that an active booking overlaps that interval.
 
-The parameterized INSERT targets the PostgreSQL exclusion constraint with
-`ON CONFLICT ON CONSTRAINT bookings_no_active_overlap DO NOTHING`. An empty
-result becomes `BOOKING_CONFLICT`. Other database failures use the standard error
-handler. This public endpoint creates bookings against the public catalogue.
+The repository writes through Prisma `booking.create`. PostgreSQL enforces
+`bookings_no_active_overlap`, the booking table's exclusion constraint.
+Prisma reports this violation as `P2039` with PostgreSQL SQLSTATE `23P01` in the
+driver adapter metadata. The repository maps that combination to
+`BOOKING_CONFLICT`. Other database failures use the standard error handler.
+This public endpoint creates bookings against the public catalogue.
 Contact details are stored on the booking and omitted from the public response.
 
 ## Demonstration data

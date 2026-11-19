@@ -1,5 +1,5 @@
 import type { ScheduleSlot } from '../availability/types/schedule-slots.types.js';
-import type { PrismaClient } from '../generated/prisma/client.js';
+import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import type { BookingContact, BookingSelection, CreatedBooking } from './types/booking.types.js';
 
 export async function insertBooking(
@@ -13,12 +13,46 @@ export async function insertBooking(
   }: BookingSelection & BookingContact,
   { startsAt, endsAt }: ScheduleSlot,
 ): Promise<CreatedBooking | undefined> {
-  const [booking] = await database.$queryRaw<CreatedBooking[]>`
-    INSERT INTO bookings (business_id, service_id, specialist_id, starts_at, ends_at, customer_name, customer_phone)
-    VALUES (${businessId}::uuid, ${serviceId}::uuid, ${specialistId}::uuid, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${customerName}, ${customerPhone})
-    ON CONFLICT ON CONSTRAINT bookings_no_active_overlap DO NOTHING
-    RETURNING id, business_id AS "businessId", service_id AS "serviceId",
-      specialist_id AS "specialistId", starts_at AS "startsAt", ends_at AS "endsAt"
-  `;
-  return booking;
+  try {
+    return await database.booking.create({
+      data: {
+        businessId,
+        serviceId,
+        specialistId,
+        startsAt: new Date(startsAt),
+        endsAt: new Date(endsAt),
+        customerName,
+        customerPhone,
+      },
+      select: {
+        id: true,
+        businessId: true,
+        serviceId: true,
+        specialistId: true,
+        startsAt: true,
+        endsAt: true,
+      },
+    });
+  } catch (error) {
+    if (isBookingOverlap(error)) return undefined;
+    throw error;
+  }
+}
+
+function isBookingOverlap(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2039') {
+    return false;
+  }
+  const adapterError = error.meta?.driverAdapterError;
+  if (typeof adapterError !== 'object' || adapterError === null || !('cause' in adapterError)) {
+    return false;
+  }
+  const cause = adapterError.cause;
+  // The bookings table has one exclusion constraint: active specialist overlap.
+  return (
+    typeof cause === 'object' &&
+    cause !== null &&
+    'originalCode' in cause &&
+    cause.originalCode === '23P01'
+  );
 }
