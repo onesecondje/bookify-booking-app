@@ -155,6 +155,19 @@ time. Other failures display a message asking the user to refresh availability
 before trying again. Express validates the slot and PostgreSQL prevents a double
 booking during the write.
 
+## Business dashboard
+
+Visit `/business` and sign in through the browser prompt as `business`.
+Set `BOOKIFY_DASHBOARD_PASSWORD` to a separate random password with at least
+32 characters in the Next.js server environment. Use HTTPS outside local
+development. This pilot uses a shared business login.
+
+Set `BOOKIFY_MANAGED_BUSINESS_ID` and `BOOKIFY_BUSINESS_BOOKINGS_TOKEN` on both
+servers. Next.js uses the API token only for its server-to-server request to
+Express. The dashboard shows upcoming bookings, customer contacts, and booking
+status, with appointment times labeled in UTC. Dashboard responses are private
+and are not cached.
+
 ## Verification
 
 ```sh
