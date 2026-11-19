@@ -5,6 +5,8 @@ export enum ApiErrorCode {
   InvalidDate = 'INVALID_DATE',
   InvalidStartsAt = 'INVALID_STARTS_AT',
   InvalidBookingBody = 'INVALID_BOOKING_BODY',
+  InvalidCustomerName = 'INVALID_CUSTOMER_NAME',
+  InvalidCustomerPhone = 'INVALID_CUSTOMER_PHONE',
   SlotUnavailable = 'SLOT_UNAVAILABLE',
   BookingConflict = 'BOOKING_CONFLICT',
   BusinessNotFound = 'BUSINESS_NOT_FOUND',

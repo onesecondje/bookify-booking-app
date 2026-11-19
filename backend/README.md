@@ -317,8 +317,12 @@ See the [booking migration notes](prisma/migrations/README.md#bookings) for the 
 ## Create a booking
 
 `POST /api/businesses/:businessId/services/:serviceId/specialists/:specialistId/bookings`
-accepts a JSON object with `date` (a `YYYY-MM-DD` business calendar day) and
-`startsAt` (a UTC timestamp ending in `Z`). Send the selected slot's start from
+accepts a JSON object with `date` (a `YYYY-MM-DD` business calendar day),
+`startsAt` (a UTC timestamp ending in `Z`), and the required strings
+`customerName` and `customerPhone`. The name is trimmed and must contain 1–100
+characters without control characters. The phone allows spaces, parentheses,
+periods and hyphens as separators and is stored as 7–15 digits with an optional
+leading plus. Send the selected slot's start from
 the availability response. The server recomputes slots using the current active
 assignment, schedule, service duration, business time zone, and current time,
 then takes both stored endpoints from the matching slot. Extra fields such as
@@ -326,7 +330,8 @@ then takes both stored endpoints from the matching slot. Extra fields such as
 
 - `201` returns `{ booking: { id, businessId, serviceId, specialistId, startsAt, endsAt } }`
   with UTC timestamps.
-- `400` covers invalid IDs, body, date, or timestamp.
+- `400` covers invalid IDs, body, date, or timestamp. Missing or invalid contact
+  fields return `INVALID_CUSTOMER_NAME` or `INVALID_CUSTOMER_PHONE`.
 - `404` covers a missing business, unavailable service, or unavailable assignment.
 - `409 SLOT_UNAVAILABLE` means that the requested start is no longer offered
   for that date, including past starts and starts outside the schedule.
@@ -336,7 +341,7 @@ The parameterized INSERT targets the PostgreSQL exclusion constraint with
 `ON CONFLICT ON CONSTRAINT bookings_no_active_overlap DO NOTHING`. An empty
 result becomes `BOOKING_CONFLICT`. Other database failures use the standard error
 handler. This public endpoint creates bookings against the public catalogue.
-Contact details and customer or business booking management are separate steps.
+Contact details are stored on the booking and omitted from the public response.
 
 ## Demonstration data
 

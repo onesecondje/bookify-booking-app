@@ -5,6 +5,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import { parseLocalDate } from '../validation/local-date.js';
 import { parseUtcInstant } from '../validation/utc-instant.js';
 import { isUuid } from '../validation/uuid.js';
+import { parseCustomerName, parseCustomerPhone } from './booking-contact.js';
 import { createBooking } from './bookings.service.js';
 
 export function createBookingsRouter(database: PrismaClient): Router {
@@ -49,12 +50,39 @@ export function createBookingsRouter(database: PrismaClient): Router {
         return;
       }
 
+      const customerName = parseCustomerName(
+        'customerName' in body ? body.customerName : undefined,
+      );
+      if (!customerName) {
+        res.status(400).json({
+          error: {
+            code: ApiErrorCode.InvalidCustomerName,
+            message: 'customerName must contain 1 to 100 characters without control characters.',
+          },
+        });
+        return;
+      }
+      const customerPhone = parseCustomerPhone(
+        'customerPhone' in body ? body.customerPhone : undefined,
+      );
+      if (!customerPhone) {
+        res.status(400).json({
+          error: {
+            code: ApiErrorCode.InvalidCustomerPhone,
+            message: 'customerPhone must contain 7 to 15 digits with an optional leading plus.',
+          },
+        });
+        return;
+      }
+
       const result = await createBooking(database, {
         businessId,
         serviceId,
         specialistId,
         date,
         startsAt,
+        customerName,
+        customerPhone,
       });
       if (result.status === 201) {
         res.status(result.status).json({ booking: result.booking });

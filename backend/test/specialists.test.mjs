@@ -237,7 +237,12 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
     await t.test('creates a server-validated booking and maps overlaps to HTTP 409', async () => {
       const date = '2099-01-06';
       const startsAt = `${date}T08:00:00Z`;
-      const body = { date, startsAt };
+      const body = {
+        date,
+        startsAt,
+        customerName: '  Example Customer  ',
+        customerPhone: '+1 (202) 555-0123',
+      };
       await prisma.specialistWorkingPeriod.create({
         data: {
           businessId: business.id,
@@ -265,6 +270,14 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         [await book([]), 400, 'INVALID_BOOKING_BODY'],
         [await book({ ...body, date: '2099-02-29' }), 400, 'INVALID_DATE'],
         [await book({ date }), 400, 'INVALID_STARTS_AT'],
+        [await book({ ...body, customerName: undefined }), 400, 'INVALID_CUSTOMER_NAME'],
+        [await book({ ...body, customerName: '   ' }), 400, 'INVALID_CUSTOMER_NAME'],
+        [await book({ ...body, customerName: 'x'.repeat(101) }), 400, 'INVALID_CUSTOMER_NAME'],
+        [await book({ ...body, customerPhone: undefined }), 400, 'INVALID_CUSTOMER_PHONE'],
+        [await book({ ...body, customerPhone: 2025550123 }), 400, 'INVALID_CUSTOMER_PHONE'],
+        [await book({ ...body, customerPhone: '12345' }), 400, 'INVALID_CUSTOMER_PHONE'],
+        [await book({ ...body, customerPhone: '1234567890123456' }), 400, 'INVALID_CUSTOMER_PHONE'],
+        [await book({ ...body, customerPhone: '2025550123 ext 1' }), 400, 'INVALID_CUSTOMER_PHONE'],
         [await book({ ...body, startsAt: `${date}T09:00:00+01:00` }), 400, 'INVALID_STARTS_AT'],
         [await book(body, 'bad'), 400, 'INVALID_SPECIALIST_ID'],
         [await book(body, first.id, 'bad'), 400, 'INVALID_SERVICE_ID'],
@@ -280,7 +293,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         [await book({ ...body, startsAt: `${date}T10:45:00Z` }), 409, 'SLOT_UNAVAILABLE'],
         [await book({ ...body, date: '2099-01-05' }), 409, 'SLOT_UNAVAILABLE'],
         [
-          await book({ date: '2000-01-04', startsAt: '2000-01-04T08:00:00Z' }),
+          await book({ ...body, date: '2000-01-04', startsAt: '2000-01-04T08:00:00Z' }),
           409,
           'SLOT_UNAVAILABLE',
         ],
@@ -303,6 +316,8 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       });
       const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
       assert.equal(persisted.cancelledAt, null);
+      assert.equal(persisted.customerName, 'Example Customer');
+      assert.equal(persisted.customerPhone, '+12025550123');
       assert.equal(persisted.endsAt.toISOString(), booking.endsAt);
       await expectError(
         await book({ ...body, startsAt: `${date}T08:15:00Z` }),
@@ -342,7 +357,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       });
       for (const hour of ['00', '01']) {
         const utcStart = `${foldDate}T${hour}:30:00`;
-        const response = await book({ date: foldDate, startsAt: `${utcStart}.000Z` });
+        const response = await book({ ...body, date: foldDate, startsAt: `${utcStart}.000Z` });
         assert.equal(response.status, 201);
         assert.equal((await response.json()).booking.startsAt, `${utcStart}.000Z`);
       }
