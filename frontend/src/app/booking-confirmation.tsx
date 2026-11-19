@@ -45,7 +45,7 @@ export function BookingConfirmation({ selection, timeLabel, timeZone }: BookingC
           />
           {invalidField === 'customerName' && (
             <span id={nameErrorId} className={styles.fieldError} role="alert">
-              Enter a name containing 1 to 100 characters.
+              Enter a name of up to 100 characters with at least one letter and no numbers.
             </span>
           )}
         </label>

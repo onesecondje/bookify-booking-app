@@ -1,7 +1,7 @@
 export function parseCustomerName(value: unknown): string | undefined {
-  if (typeof value !== 'string' || /\p{Cc}/u.test(value)) return undefined;
+  if (typeof value !== 'string' || /[\p{Cc}\p{N}]/u.test(value)) return undefined;
   const name = value.trim();
-  return name.length >= 1 && name.length <= 100 ? name : undefined;
+  return name.length <= 100 && /\p{L}/u.test(name) ? name : undefined;
 }
 
 export function parseCustomerPhone(value: unknown): string | undefined {

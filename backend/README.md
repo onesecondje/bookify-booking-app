@@ -320,7 +320,8 @@ See the [booking migration notes](prisma/migrations/README.md#bookings) for the 
 accepts a JSON object with `date` (a `YYYY-MM-DD` business calendar day),
 `startsAt` (a UTC timestamp ending in `Z`), and the required strings
 `customerName` and `customerPhone`. The name is trimmed and must contain 1–100
-characters without control characters. The phone allows spaces, parentheses,
+characters, including at least one letter and no numbers or control characters.
+The phone allows spaces, parentheses,
 periods and hyphens as separators and is stored as 7–15 digits with an optional
 leading plus. Send the selected slot's start from
 the availability response. The server recomputes slots using the current active

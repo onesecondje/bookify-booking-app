@@ -57,7 +57,8 @@ export function createBookingsRouter(database: PrismaClient): Router {
         res.status(400).json({
           error: {
             code: ApiErrorCode.InvalidCustomerName,
-            message: 'customerName must contain 1 to 100 characters without control characters.',
+            message:
+              'customerName must contain 1 to 100 characters, including a letter and no numbers or control characters.',
           },
         });
         return;
