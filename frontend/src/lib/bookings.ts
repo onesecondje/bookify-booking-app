@@ -1,9 +1,10 @@
 import 'server-only';
 import { BookingConfirmationStatus } from '../enums/booking-confirmation-status.enum';
-import { parseBookingId } from './bookings.schema';
+import { parseBookingContactError, parseBookingId } from './bookings.schema';
 import { getCatalogueConfig } from './config';
 import type {
   BookingConfirmationResult,
+  BookingContact,
   BookingSelection,
 } from './types/booking-confirmation.types';
 import { isLocalDate } from './validation/local-date';
@@ -12,6 +13,7 @@ import { isUuid } from './validation/uuid';
 
 export async function createBooking(
   selection: BookingSelection,
+  contact: BookingContact,
 ): Promise<BookingConfirmationResult> {
   const { serviceId, specialistId, date, startsAt } = selection;
   if (
@@ -32,12 +34,16 @@ export async function createBooking(
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, startsAt }),
+      body: JSON.stringify({ date, startsAt, ...contact }),
       cache: 'no-store',
       signal: AbortSignal.timeout(5000),
     });
 
     if (response.status === 409) return { status: BookingConfirmationStatus.Conflict };
+    if (response.status === 400) {
+      const field = parseBookingContactError(await response.json());
+      if (field) return { status: BookingConfirmationStatus.InvalidContact, field };
+    }
     if (response.status !== 201) throw new Error('Booking request failed.');
 
     return {

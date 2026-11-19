@@ -141,9 +141,11 @@ the business time zone. Slots reflect the working schedule and active bookings.
 
 ## Booking confirmation
 
-The confirm button appears after a selected start matches a slot in the current
-availability response. A Next.js Server Action submits only the selected date and
-UTC start to the Express booking endpoint. The button is disabled while the request
+The contact form appears after a selected start matches a slot in the current
+availability response. A Next.js Server Action sends the customer's name and
+phone with the selected date and UTC start to Express. Known contact validation
+errors are displayed beside the corresponding input, and entered values remain
+available for correction. The button is disabled while the request
 is pending. A validated `201` displays the date, local time and booking reference.
 The receipt is held in form state for the current visit.
 

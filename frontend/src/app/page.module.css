@@ -192,6 +192,14 @@ a.service:hover {
 .bookingReference {
   overflow-wrap: anywhere;
 }
+.bookingContact {
+  display: grid;
+  gap: 12px;
+  max-width: 360px;
+}
+.fieldError {
+  color: #a12424;
+}
 .dateForm {
   display: flex;
   align-items: end;
