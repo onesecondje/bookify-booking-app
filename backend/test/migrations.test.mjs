@@ -104,6 +104,14 @@ test('bookings retain their intervals and atomically prevent active specialist o
       assert.equal(start, '2099-01-05T08:00:00.000Z');
       assert.equal(end, '2099-01-05T08:30:00.000Z');
       assert.equal(original.cancelledAt, null);
+      assert.equal(original.customerName, null);
+      assert.equal(original.customerPhone, null);
+      const withContact = await prisma.booking.update({
+        where: { id: original.id },
+        data: { customerName: 'Example Customer', customerPhone: '+12025550123' },
+      });
+      assert.equal(withContact.customerName, 'Example Customer');
+      assert.equal(withContact.customerPhone, '+12025550123');
       await insert(alice.id, trim.id, end, '2099-01-05T09:00:00Z');
       await insert(alex.id, haircut.id, start, end);
       await assert.rejects(insert(alice.id, trim.id, start, end), { code: '23P01' });
@@ -188,6 +196,7 @@ test('Prisma deploy is repeatable and preserves database constraints and default
       '20261110000100_add_specialists_and_service_assignments',
       '20261112000100_add_specialist_working_periods',
       '20261118000100_add_bookings',
+      '20261119000100_add_booking_customer_contact',
     ]);
     assert.ok(history.rows.every((row) => row.finished_at));
     const { rows: businesses } = await pool.query(
@@ -270,7 +279,7 @@ test('baselining existing tables preserves records and does not recreate tables'
       tableBefore,
     );
     assert.equal((await pool.query('SELECT * FROM businesses')).rowCount, 1);
-    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 4);
+    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 5);
   });
 });
 

@@ -199,6 +199,14 @@ constraint to active bookings. PostgreSQL checks inserts and updates, including
 concurrent writes, and rejects conflicts with SQLSTATE `23P01`. The CHECK and
 exclusion constraints are maintained in migration SQL and verified by database tests.
 
+## Booking customer contact
+
+Migration `20261119000100_add_booking_customer_contact` adds nullable text columns
+for the customer's name and phone. Existing bookings retain their history with
+null contact values, and existing writers can continue omitting contact details.
+Text preserves phone prefixes and leading zeros. Contact collection and request
+validation belong to the booking flow.
+
 ## Integration tests
 
 Run `pnpm -C backend test` with PostgreSQL available and CREATE SCHEMA permission.

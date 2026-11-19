@@ -35,6 +35,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       '20261110000100_add_specialists_and_service_assignments',
       '20261112000100_add_specialist_working_periods',
       '20261118000100_add_bookings',
+      '20261119000100_add_booking_customer_contact',
     ]) {
       await pool.query(
         await readFile(
