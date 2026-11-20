@@ -1,4 +1,6 @@
 export enum ApiErrorCode {
+  InvalidBookingId = 'INVALID_BOOKING_ID',
+  BookingNotFound = 'BOOKING_NOT_FOUND',
   Unauthorized = 'UNAUTHORIZED',
   Forbidden = 'FORBIDDEN',
   InvalidBusinessId = 'INVALID_BUSINESS_ID',

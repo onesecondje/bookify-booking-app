@@ -363,6 +363,12 @@ name and phone, and the IDs and names of its service and specialist. Future
 cancelled bookings are included with `cancelledAt`; legacy contacts may be null.
 An empty list returns `200`. Responses use `Cache-Control: no-store`.
 
+`PATCH /api/businesses/:businessId/bookings/:bookingId/cancel` uses the same
+credentials and cancels an upcoming booking for the managed business. It sets
+`cancelledAt` and releases the slot. It returns `204` on success, including a
+repeat request for a still-upcoming cancelled booking. An invalid booking ID
+returns `400`. Missing, past, and foreign bookings return `404`.
+
 ## Demonstration data
 
 After migrations and client generation, populate the local development database:

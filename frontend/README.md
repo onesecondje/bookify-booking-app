@@ -168,6 +168,10 @@ Express. The dashboard shows upcoming bookings, customer contacts, and booking
 status, with appointment times labeled in UTC. Dashboard responses are private
 and are not cached.
 
+Use **Cancel booking** on a confirmed booking and approve the prompt. The server
+action checks dashboard access, calls the protected cancellation endpoint, and
+refreshes the dashboard. The booking remains visible with status **Cancelled**.
+
 ## Verification
 
 ```sh

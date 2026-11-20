@@ -399,7 +399,48 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         'The selected time overlaps an existing booking.',
       );
       assert.equal((await book({ ...body, startsAt: `${date}T08:30:00Z` })).status, 201);
-      await prisma.booking.update({ where: { id: booking.id }, data: { cancelledAt: new Date() } });
+      const isSlotAvailable = async () => {
+        const response = await request(
+          business.id,
+          service.id,
+          `/${first.id}/availability?date=${date}`,
+        );
+        assert.equal(response.status, 200);
+        return (await response.json()).slots.some((slot) => slot.startsAt === startsAt);
+      };
+      const cancel = (id, authorization, targetBusiness = business.id) =>
+        globalThis.fetch(`${origin}/api/businesses/${targetBusiness}/bookings/${id}/cancel`, {
+          method: 'PATCH',
+          headers: authorization ? { Authorization: authorization } : {},
+        });
+      assert.equal(await isSlotAvailable(), false);
+      assert.equal((await cancel(booking.id)).status, 401);
+      assert.equal((await cancel(booking.id, `Bearer ${token}`, other.id)).status, 403);
+      assert.equal((await cancel('invalid', `Bearer ${token}`)).status, 400);
+      const foreignBooking = await prisma.booking.create({
+        data: {
+          businessId: other.id,
+          serviceId: foreign.id,
+          specialistId: foreignSpecialist.id,
+          startsAt: new Date(startsAt),
+          endsAt: new Date(booking.endsAt),
+        },
+      });
+      assert.equal((await cancel(foreignBooking.id, `Bearer ${token}`)).status, 404);
+      assert.equal(
+        (await prisma.booking.findUniqueOrThrow({ where: { id: foreignBooking.id } })).cancelledAt,
+        null,
+      );
+      assert.equal(await isSlotAvailable(), false);
+      assert.equal((await cancel(booking.id, `Bearer ${token}`)).status, 204);
+      const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      assert.ok(after.cancelledAt);
+      assert.equal((await cancel(booking.id, `Bearer ${token}`)).status, 204);
+      assert.deepEqual(
+        (await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).cancelledAt,
+        after.cancelledAt,
+      );
+      assert.equal(await isSlotAvailable(), true);
       assert.equal((await book(body)).status, 201);
 
       const competing = await Promise.all([

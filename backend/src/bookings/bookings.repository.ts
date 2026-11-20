@@ -2,6 +2,26 @@ import type { ScheduleSlot } from '../availability/types/schedule-slots.types.js
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js';
 import type { BookingContact, BookingSelection, CreatedBooking } from './types/booking.types.js';
 
+export async function cancelUpcomingBusinessBooking(
+  database: PrismaClient,
+  businessId: string,
+  bookingId: string,
+  now: Date,
+): Promise<boolean> {
+  const booking = { id: bookingId, businessId, startsAt: { gt: now } };
+  const { count } = await database.booking.updateMany({
+    where: { ...booking, cancelledAt: null },
+    data: { cancelledAt: now },
+  });
+  if (count > 0) return true;
+
+  const cancelled = await database.booking.findFirst({
+    where: { ...booking, cancelledAt: { not: null } },
+    select: { id: true },
+  });
+  return cancelled !== null;
+}
+
 export function findUpcomingBusinessBookings(
   database: PrismaClient,
   businessId: string,

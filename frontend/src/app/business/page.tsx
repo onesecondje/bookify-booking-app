@@ -3,6 +3,7 @@ import { getBusinessBookings } from '@/lib/business-bookings';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import styles from './business-bookings.module.css';
+import { CancelBookingForm } from './cancel-booking-form';
 
 export default async function BusinessDashboard() {
   if (!canViewBusinessDashboard((await headers()).get('authorization'))) notFound();
@@ -32,6 +33,8 @@ export default async function BusinessDashboard() {
                 <th scope="col">Customer</th>
                 <th scope="col">Phone</th>
                 <th scope="col">Status</th>
+                <th scope="col">Cancelled at (UTC)</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -51,6 +54,16 @@ export default async function BusinessDashboard() {
                   <td>{booking.customerName ?? 'Not provided'}</td>
                   <td>{booking.customerPhone ?? 'Not provided'}</td>
                   <td>{booking.cancelledAt ? 'Cancelled' : 'Confirmed'}</td>
+                  <td>
+                    {booking.cancelledAt ? (
+                      <time dateTime={booking.cancelledAt}>
+                        {dateTime.format(new Date(booking.cancelledAt))}
+                      </time>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td>{!booking.cancelledAt && <CancelBookingForm bookingId={booking.id} />}</td>
                 </tr>
               ))}
             </tbody>
