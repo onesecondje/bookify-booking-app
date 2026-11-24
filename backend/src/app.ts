@@ -9,6 +9,7 @@ import { notFound } from './middleware/not-found.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { createServicesRouter } from './services/services.routes.js';
 import { createSpecialistsRouter } from './specialists/specialists.routes.js';
+import { createBusinessScheduleRouter } from './specialists/business-schedule.routes.js';
 
 // Configure request handling without opening a network port.
 export function createApp(
@@ -28,6 +29,7 @@ export function createApp(
   app.use('/api', createAvailabilityRouter(database));
   app.use('/api', createBookingsRouter(database));
   app.use('/api', createBusinessBookingsRouter(database, businessBookingAccess));
+  app.use('/api', createBusinessScheduleRouter(database, businessBookingAccess));
 
   // Register fallback handlers after all routes; the error handler must be last.
   app.use(notFound);

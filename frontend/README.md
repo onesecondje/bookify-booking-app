@@ -172,6 +172,17 @@ Use **Cancel booking** on a confirmed booking and approve the prompt. The server
 action checks dashboard access, calls the protected cancellation endpoint, and
 refreshes the dashboard. The booking remains visible with status **Cancelled**.
 
+In **Weekly schedule**, choose a specialist and select **Show schedule**. The
+selection is stored in the `specialistId` URL parameter. Active specialists are
+listed first, then inactive specialists, with each group ordered by name and ID.
+The schedule uses the business time zone, lists separate intervals for split
+shifts, and marks days without intervals as **Day off**.
+
+Expand **Edit** for a weekday to replace its working hours. Enter one
+`HH:MM-HH:MM` interval per line, or leave the field blank for a day off.
+`24:00` is supported as an end time. The change affects recurring availability
+for future booking requests and preserves existing appointments.
+
 ## Verification
 
 ```sh

@@ -1,14 +1,24 @@
 import { canViewBusinessDashboard } from '@/lib/business-dashboard-auth';
 import { getBusinessBookings } from '@/lib/business-bookings';
+import { getBusinessSchedule } from '@/lib/business-schedule';
+import { isUuid } from '@/lib/validation/uuid';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import styles from './business-bookings.module.css';
 import { CancelBookingForm } from './cancel-booking-form';
+import type { BusinessDashboardProps } from './types/business-dashboard.types';
+import { WeeklySchedule } from './weekly-schedule';
 
-export default async function BusinessDashboard() {
+export default async function BusinessDashboard({ searchParams }: BusinessDashboardProps) {
   if (!canViewBusinessDashboard((await headers()).get('authorization'))) notFound();
 
-  const bookings = await getBusinessBookings();
+  const { specialistId } = await searchParams;
+  const selectedId = isUuid(specialistId) ? specialistId : undefined;
+  const invalidSelection = specialistId !== undefined && selectedId === undefined;
+  const [bookings, schedule] = await Promise.all([
+    getBusinessBookings(),
+    getBusinessSchedule(selectedId),
+  ]);
   const dateTime = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -70,6 +80,7 @@ export default async function BusinessDashboard() {
           </table>
         </div>
       )}
+      <WeeklySchedule result={schedule} invalidSelection={invalidSelection} />
     </main>
   );
 }

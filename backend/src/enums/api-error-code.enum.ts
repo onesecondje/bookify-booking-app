@@ -1,4 +1,6 @@
 export enum ApiErrorCode {
+  InvalidWorkingHours = 'INVALID_WORKING_HOURS',
+  ScheduleConflict = 'SCHEDULE_CONFLICT',
   InvalidBookingId = 'INVALID_BOOKING_ID',
   BookingNotFound = 'BOOKING_NOT_FOUND',
   Unauthorized = 'UNAUTHORIZED',

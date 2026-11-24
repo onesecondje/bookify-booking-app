@@ -99,6 +99,132 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
     };
 
     await t.test(
+      'weekly schedule requires business access and returns sorted working periods',
+      async () => {
+        const scheduleUrl = (id) => `${origin}/api/businesses/${id}/schedule`;
+        const headers = { Authorization: `Bearer ${token}` };
+        const unauthorized = await globalThis.fetch(scheduleUrl(business.id));
+        assert.equal(unauthorized.status, 401);
+        assert.equal(unauthorized.headers.get('www-authenticate'), 'Bearer');
+        assert.equal((await globalThis.fetch(scheduleUrl(other.id), { headers })).status, 403);
+
+        const workingPeriods = [
+          { weekday: 1, startMinute: 540, endMinute: 780 },
+          { weekday: 1, startMinute: 840, endMinute: 1080 },
+          { weekday: 7, startMinute: 1380, endMinute: 1440 },
+        ];
+        await prisma.specialistWorkingPeriod.createMany({
+          data: [...workingPeriods].reverse().map((period) => ({
+            ...period,
+            businessId: business.id,
+            specialistId: unassigned.id,
+          })),
+        });
+        const response = await globalThis.fetch(scheduleUrl(business.id), { headers });
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        const specialists = [unassigned, alex, first, second, disabled].map((specialist) => ({
+          isActive: true,
+          ...specialist,
+        }));
+        assert.deepEqual(await response.json(), {
+          specialists,
+          schedule: { ...unassigned, timeZone: 'Europe/Warsaw', workingPeriods },
+        });
+
+        const select = (id) =>
+          globalThis.fetch(`${scheduleUrl(business.id)}?specialistId=${id}`, { headers });
+        const selected = await select(disabled.id.toUpperCase());
+        assert.equal(selected.status, 200);
+        assert.deepEqual(await selected.json(), {
+          specialists,
+          schedule: {
+            id: disabled.id,
+            name: disabled.name,
+            timeZone: 'Europe/Warsaw',
+            workingPeriods: [],
+          },
+        });
+        const foreignSchedule = await select(foreignSpecialist.id);
+        assert.equal(foreignSchedule.status, 200);
+        assert.deepEqual(await foreignSchedule.json(), { specialists, schedule: null });
+        for (const invalidId of ['invalid', `${alex.id}&specialistId=${first.id}`]) {
+          await expectError(
+            await select(invalidId),
+            400,
+            'INVALID_SPECIALIST_ID',
+            'specialistId must be a valid UUID.',
+          );
+        }
+
+        const editUrl = `${scheduleUrl(business.id)}/${unassigned.id}`;
+        const replace = (day, periods, access = headers, url = editUrl) =>
+          globalThis.fetch(`${url}/${day}`, {
+            method: 'PUT',
+            headers: { ...access, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ periods }),
+          });
+        const replacement = [
+          { startMinute: 600, endMinute: 720 },
+          { startMinute: 720, endMinute: 780 },
+        ];
+        assert.equal((await replace(1, replacement, {})).status, 401);
+        assert.equal(
+          (
+            await replace(
+              1,
+              replacement,
+              headers,
+              `${scheduleUrl(other.id)}/${foreignSpecialist.id}`,
+            )
+          ).status,
+          403,
+        );
+        assert.equal(
+          (
+            await replace(
+              1,
+              replacement,
+              headers,
+              `${scheduleUrl(business.id)}/${foreignSpecialist.id}`,
+            )
+          ).status,
+          404,
+        );
+        assert.equal((await replace(8, replacement)).status, 400);
+        assert.equal(
+          (await replace(1, [replacement[0], { startMinute: 719, endMinute: 780 }])).status,
+          400,
+        );
+        assert.deepEqual(
+          (await (await select(unassigned.id)).json()).schedule.workingPeriods,
+          workingPeriods,
+        );
+        assert.equal((await replace(1, replacement)).status, 204);
+        assert.deepEqual((await (await select(unassigned.id)).json()).schedule.workingPeriods, [
+          ...replacement.map((period) => ({ weekday: 1, ...period })),
+          workingPeriods[2],
+        ]);
+        assert.equal((await replace(1, [])).status, 204);
+        assert.deepEqual((await (await select(unassigned.id)).json()).schedule.workingPeriods, [
+          workingPeriods[2],
+        ]);
+
+        const competing = [{ startMinute: 900, endMinute: 960 }];
+        const saves = await Promise.all([replace(6, replacement), replace(6, competing)]);
+        assert(saves.every(({ status }) => status === 204 || status === 409));
+        assert(saves.some(({ status }) => status === 204));
+        const updated = (await (await select(unassigned.id)).json()).schedule.workingPeriods;
+        const saturday = updated.filter(({ weekday }) => weekday === 6);
+        const written = saturday.length === replacement.length ? replacement : competing;
+        assert.deepEqual(
+          saturday,
+          written.map((period) => ({ weekday: 6, ...period })),
+        );
+      },
+    );
+
+    await t.test(
       'availability returns scoped schedule slots and validates request inputs',
       async () => {
         const date = '2099-01-05';

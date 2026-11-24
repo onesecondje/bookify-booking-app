@@ -1,18 +1,8 @@
 import { availabilityNotFoundStatuses } from './constants/availability.constants';
 import type { Availability, AvailabilitySlot } from './types/availability.types';
 import { isLocalDate } from './validation/local-date';
+import { isTimeZone } from './validation/time-zone';
 import { isUtcInstant } from './validation/utc-instant';
-
-function isTimeZone(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.trim() !== value) return false;
-  if (/^[+-]/.test(value)) return false;
-  try {
-    new Intl.DateTimeFormat('en', { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function isAvailabilitySlot(value: unknown): value is AvailabilitySlot {
   return (

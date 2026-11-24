@@ -173,6 +173,23 @@ the explicit demo seed includes specialists and service assignments.
 
 ## Weekly specialist working periods
 
+`GET /api/businesses/:businessId/schedule` uses the same Bearer token and
+business scope as the business bookings endpoints. It returns
+`{ specialists, schedule }`. Specialists from that business are ordered by
+active status (active first), name, and ID. The optional `specialistId` query
+parameter selects a specialist. The default is the first specialist in the list.
+The schedule includes the business time zone and working periods ordered by
+weekday and start minute. If the list is empty or the requested specialist is
+outside the managed business or missing, `schedule` is `null`. A malformed or
+repeated `specialistId` returns `400`.
+
+`PUT /api/businesses/:businessId/schedule/:specialistId/:weekday` uses the
+same business access and replaces one weekday's intervals in a transaction.
+Send `{ periods: [{ startMinute, endMinute }] }`, or `{ periods: [] }` for a
+day off. A valid update returns `204`. Invalid or overlapping hours return
+`400`, an unavailable specialist returns `404`, and a competing write may
+return `409`. Existing bookings are preserved.
+
 `SpecialistWorkingPeriod` stores recurring local working intervals: `weekday`
 uses ISO numbering (Monday 1 through Sunday 7), and `startMinute`/`endMinute`
 are integer minutes since local midnight in `Business.timeZone`. For example,

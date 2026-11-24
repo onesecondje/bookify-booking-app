@@ -6,7 +6,7 @@ import {
   cancelUpcomingBusinessBooking,
   findUpcomingBusinessBookings,
 } from './bookings.repository.js';
-import { matchesBusinessToken } from './business-booking-access.js';
+import { requireBusinessAccess } from './business-booking-access.js';
 import type { BusinessBookingAccess } from './types/business-booking-access.types.js';
 
 export function createBusinessBookingsRouter(
@@ -15,26 +15,7 @@ export function createBusinessBookingsRouter(
 ): Router {
   const router = Router();
 
-  router.use('/businesses/:businessId/bookings', (req, res, next) => {
-    res.set('Cache-Control', 'no-store');
-    if (!access || !matchesBusinessToken(req.get('Authorization'), access.token)) {
-      res
-        .set('WWW-Authenticate', 'Bearer')
-        .status(401)
-        .json({
-          error: { code: ApiErrorCode.Unauthorized, message: 'Business credentials are required.' },
-        });
-      return;
-    }
-    if (req.params.businessId.toLowerCase() !== access.businessId) {
-      res.status(403).json({
-        error: { code: ApiErrorCode.Forbidden, message: 'Access to this business is forbidden.' },
-      });
-      return;
-    }
-
-    next();
-  });
+  router.use('/businesses/:businessId/bookings', requireBusinessAccess(access));
 
   router.get('/businesses/:businessId/bookings', async (req, res) => {
     const bookings = await findUpcomingBusinessBookings(
