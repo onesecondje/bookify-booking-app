@@ -1,7 +1,7 @@
 import type { ServiceSummary } from './types/services.types';
 import { isUuid } from './validation/uuid';
 
-function isService(value: unknown): value is ServiceSummary {
+export function isService(value: unknown): value is ServiceSummary {
   if (typeof value !== 'object' || value === null) return false;
   return (
     'id' in value &&

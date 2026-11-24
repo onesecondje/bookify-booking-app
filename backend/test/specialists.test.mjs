@@ -99,6 +99,44 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
     };
 
     await t.test(
+      'managed catalogue includes inactive services and all assignments for its business',
+      async () => {
+        const url = (id) => `${origin}/api/businesses/${id}/manage/services`;
+        const headers = { Authorization: `Bearer ${token}` };
+        assert.equal((await globalThis.fetch(url(business.id))).status, 401);
+        assert.equal((await globalThis.fetch(url(other.id), { headers })).status, 403);
+
+        const response = await globalThis.fetch(url(business.id), { headers });
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        const { services } = await response.json();
+        assert.deepEqual(
+          services.map(({ id }) => id),
+          [service.id, inactive.id, inactiveOnly.id, empty.id],
+        );
+        assert.deepEqual(services[0], {
+          id: service.id,
+          name: service.name,
+          durationMinutes: 30,
+          isActive: true,
+          specialists: [disabled, alex, first, second].map((specialist) => ({
+            isActive: true,
+            ...specialist,
+          })),
+        });
+        assert.equal(services[1].isActive, false);
+        assert.deepEqual(
+          services[1].specialists,
+          [unassigned, first].map((specialist) => ({
+            isActive: true,
+            ...specialist,
+          })),
+        );
+        assert.deepEqual(services[3].specialists, []);
+      },
+    );
+
+    await t.test(
       'weekly schedule requires business access and returns sorted working periods',
       async () => {
         const scheduleUrl = (id) => `${origin}/api/businesses/${id}/schedule`;
@@ -680,6 +718,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       assert.deepEqual(await response.json(), { specialists: [first, second] });
       assert.equal(await prisma.specialistService.count({ where: { specialistId: alex.id } }), 1);
     });
+
     await t.test(
       'database failures stay generic and UUID validation needs no database query',
       async (context) => {

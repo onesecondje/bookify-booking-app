@@ -24,7 +24,7 @@ export function createApp(
     return res.status(200).send({ ok: true });
   });
 
-  app.use('/api', createServicesRouter(database));
+  app.use('/api', createServicesRouter(database, businessBookingAccess));
   app.use('/api', createSpecialistsRouter(database));
   app.use('/api', createAvailabilityRouter(database));
   app.use('/api', createBookingsRouter(database));

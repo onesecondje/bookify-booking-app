@@ -1,7 +1,7 @@
 import type { SpecialistSummary } from './types/specialists.types';
 import { isUuid } from './validation/uuid';
 
-function isSpecialist(value: unknown): value is SpecialistSummary {
+export function isSpecialist(value: unknown): value is SpecialistSummary {
   if (typeof value !== 'object' || value === null) return false;
   return (
     'id' in value &&

@@ -488,6 +488,13 @@ Relative imports use the emitted JavaScript file extension: `app.ts` compiles to
 the corresponding `.ts` source file during type checking, and `tsx` supports this
 import when running the source code directly.
 
+## Business service catalogue
+
+The dashboard uses `GET /api/businesses/:businessId/manage/services`, protected
+by the business Bearer token and business scope. It returns all services with
+their ID, name, duration, active status, and assigned specialists. Assigned
+specialists include their ID, name, and active status.
+
 ## Public service catalogue
 
 `GET /api/businesses/:businessId/services` lists active services for a business.

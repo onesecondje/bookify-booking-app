@@ -1,11 +1,13 @@
 import { canViewBusinessDashboard } from '@/lib/business-dashboard-auth';
 import { getBusinessBookings } from '@/lib/business-bookings';
 import { getBusinessSchedule } from '@/lib/business-schedule';
+import { getBusinessServices } from '@/lib/business-services';
 import { isUuid } from '@/lib/validation/uuid';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import styles from './business-bookings.module.css';
+import { BusinessServices } from './business-services';
 import { CancelBookingForm } from './cancel-booking-form';
 import type { BusinessDashboardProps } from './types/business-dashboard.types';
 import { WeeklySchedule } from './weekly-schedule';
@@ -16,9 +18,10 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
   const { specialistId } = await searchParams;
   const selectedId = isUuid(specialistId) ? specialistId : undefined;
   const invalidSelection = specialistId !== undefined && selectedId === undefined;
-  const [bookings, schedule] = await Promise.all([
+  const [bookings, schedule, services] = await Promise.all([
     getBusinessBookings(),
     getBusinessSchedule(selectedId),
+    getBusinessServices(),
   ]);
   const dateTime = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
@@ -84,6 +87,7 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
           </table>
         </div>
       )}
+      <BusinessServices services={services} />
       <WeeklySchedule result={schedule} invalidSelection={invalidSelection} />
     </main>
   );

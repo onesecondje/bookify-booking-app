@@ -2,7 +2,7 @@ import 'server-only';
 import { getCatalogueConfig } from './config';
 import { isUuid } from './validation/uuid';
 
-export function businessApiRequest(resource: 'bookings' | 'schedule') {
+export function businessApiRequest(resource: 'bookings' | 'schedule' | 'manage/services') {
   const { apiOrigin } = getCatalogueConfig();
   const businessId = process.env.BOOKIFY_MANAGED_BUSINESS_ID;
   const token = process.env.BOOKIFY_BUSINESS_BOOKINGS_TOKEN;

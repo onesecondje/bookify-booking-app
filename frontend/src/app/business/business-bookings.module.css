@@ -50,11 +50,13 @@
   vertical-align: top;
 }
 
-.schedule {
+.schedule,
+.services {
   margin-top: 2rem;
 }
 
-.schedule h2 {
+.schedule h2,
+.services h2 {
   margin-bottom: 0.75rem;
 }
 
