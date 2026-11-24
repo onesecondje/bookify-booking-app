@@ -3,6 +3,7 @@ import { getBusinessBookings } from '@/lib/business-bookings';
 import { getBusinessSchedule } from '@/lib/business-schedule';
 import { isUuid } from '@/lib/validation/uuid';
 import { headers } from 'next/headers';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import styles from './business-bookings.module.css';
 import { CancelBookingForm } from './cancel-booking-form';
@@ -27,6 +28,9 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
 
   return (
     <main className={styles.dashboard}>
+      <Link className={styles.backLink} href="/">
+        Back to booking
+      </Link>
       <h1>Upcoming bookings</h1>
       {bookings === null ? (
         <p role="status">Bookings are unavailable. Refresh the page to try again.</p>

@@ -8,6 +8,12 @@
   margin-bottom: 1.5rem;
 }
 
+.backLink {
+  display: inline-block;
+  margin-bottom: 1rem;
+  text-decoration: underline;
+}
+
 .scheduleForm {
   display: flex;
   align-items: end;

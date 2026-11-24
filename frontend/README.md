@@ -176,7 +176,8 @@ In **Weekly schedule**, choose a specialist and select **Show schedule**. The
 selection is stored in the `specialistId` URL parameter. Active specialists are
 listed first, then inactive specialists, with each group ordered by name and ID.
 The schedule uses the business time zone, lists separate intervals for split
-shifts, and marks days without intervals as **Day off**.
+shifts, and marks days without intervals as **Day off**. **Back to booking**
+opens the public booking page.
 
 Expand **Edit** for a weekday to replace its working hours. Enter one
 `HH:MM-HH:MM` interval per line, or leave the field blank for a day off.
