@@ -495,6 +495,12 @@ by the business Bearer token and business scope. It returns all services with
 their ID, name, duration, active status, and assigned specialists. Assigned
 specialists include their ID, name, and active status.
 
+`PUT /api/businesses/:businessId/manage/services/:serviceId` uses the same
+access checks and updates the service name, duration in whole minutes, and
+active status. Send `{ name, durationMinutes, isActive }`. A successful
+update returns `204`. New availability and bookings use the updated duration.
+Existing booking rows and specialist assignments are preserved.
+
 ## Public service catalogue
 
 `GET /api/businesses/:businessId/services` lists active services for a business.

@@ -69,8 +69,21 @@
   margin-top: 0.5rem;
 }
 
-.workingDayEditor summary {
+.workingDayEditor summary,
+.serviceEditor summary {
   cursor: pointer;
+}
+
+.serviceEditor fieldset,
+.serviceEditor label {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
+.serviceEditor fieldset {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
 }
 
 .workingDayEditor form,

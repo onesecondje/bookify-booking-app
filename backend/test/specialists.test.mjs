@@ -720,6 +720,105 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
     });
 
     await t.test(
+      'service edits change future booking duration and preserve existing bookings',
+      async () => {
+        const editable = await makeService(business.id, 'Consultation');
+        await prisma.specialistService.create({
+          data: { businessId: business.id, serviceId: editable.id, specialistId: first.id },
+        });
+        const date = '2099-01-13';
+        const servicePath = `${origin}/api/businesses/${business.id}/services/${editable.id}/specialists/${first.id}`;
+        const jsonHeaders = { 'Content-Type': 'application/json' };
+        const headers = { ...jsonHeaders, Authorization: `Bearer ${token}` };
+        const update = { name: '  Extended consultation  ', durationMinutes: 45, isActive: true };
+        const edit = (
+          data = update,
+          credentials = headers,
+          id = editable.id,
+          target = business.id,
+        ) =>
+          globalThis.fetch(`${origin}/api/businesses/${target}/manage/services/${id}`, {
+            method: 'PUT',
+            headers: credentials,
+            body: JSON.stringify(data),
+          });
+        const book = (time) =>
+          globalThis.fetch(`${servicePath}/bookings`, {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({
+              date,
+              startsAt: `${date}T${time}:00Z`,
+              customerName: 'Example Customer',
+              customerPhone: '+12025550123',
+            }),
+          });
+
+        const firstResponse = await book('08:00');
+        assert.equal(firstResponse.status, 201);
+        const { booking: original } = await firstResponse.json();
+        assert.equal(original.endsAt, `${date}T08:30:00.000Z`);
+        const storedOriginal = await prisma.booking.findUniqueOrThrow({
+          where: { id: original.id },
+        });
+        assert.equal((await edit(update, jsonHeaders)).status, 401);
+        assert.equal((await edit(update, headers, foreign.id, other.id)).status, 403);
+        assert.equal((await edit(update, headers, foreign.id)).status, 404);
+        assert.equal((await edit(update, headers, 'invalid')).status, 400);
+        for (const input of [
+          { ...update, name: '  ' },
+          { ...update, durationMinutes: 0 },
+          { ...update, durationMinutes: 1.5 },
+          { ...update, durationMinutes: 2_147_483_648 },
+          { ...update, isActive: 'false' },
+        ]) {
+          assert.equal((await edit(input)).status, 400);
+        }
+        assert.deepEqual(
+          await prisma.service.findUniqueOrThrow({ where: { id: editable.id } }),
+          editable,
+        );
+        assert.equal((await edit()).status, 204);
+
+        const availability = await globalThis.fetch(`${servicePath}/availability?date=${date}`);
+        assert.equal(availability.status, 200);
+        const { slots } = await availability.json();
+        assert(
+          slots.some(
+            (slot) => slot.startsAt === `${date}T08:30:00Z` && slot.endsAt === `${date}T09:15:00Z`,
+          ),
+        );
+        assert(!slots.some((slot) => slot.startsAt === `${date}T10:30:00Z`));
+
+        const nextResponse = await book('08:30');
+        assert.equal(nextResponse.status, 201);
+        const { booking: next } = await nextResponse.json();
+        assert.equal(next.endsAt, `${date}T09:15:00.000Z`);
+        const catalogue = `${origin}/api/businesses/${business.id}/services`;
+        const readPublicService = async () =>
+          (await (await globalThis.fetch(catalogue)).json()).services.find(
+            ({ id }) => id === editable.id,
+          );
+        assert.deepEqual(await readPublicService(), {
+          id: editable.id,
+          name: 'Extended consultation',
+          durationMinutes: 45,
+        });
+        assert.equal((await edit({ ...update, isActive: false })).status, 204);
+        assert.equal(await readPublicService(), undefined);
+        assert.equal((await book('09:15')).status, 404);
+
+        assert.deepEqual(
+          await prisma.booking.findUniqueOrThrow({ where: { id: original.id } }),
+          storedOriginal,
+        );
+        assert.equal(
+          (await prisma.booking.findUniqueOrThrow({ where: { id: next.id } })).endsAt.toISOString(),
+          next.endsAt,
+        );
+      },
+    );
+    await t.test(
       'database failures stay generic and UUID validation needs no database query',
       async (context) => {
         const log = context.mock.method(console, 'error', () => {});

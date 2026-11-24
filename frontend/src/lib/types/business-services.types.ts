@@ -9,3 +9,5 @@ export interface BusinessService extends ServiceSummary {
   isActive: boolean;
   specialists: BusinessServiceSpecialist[];
 }
+
+export type BusinessServiceUpdate = Pick<BusinessService, 'name' | 'durationMinutes' | 'isActive'>;

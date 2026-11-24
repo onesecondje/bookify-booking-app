@@ -1,4 +1,5 @@
 import styles from './business-bookings.module.css';
+import { ServiceEditForm } from './service-edit-form';
 import type { BusinessServicesProps } from './types/business-services.types';
 
 export function BusinessServices({ services }: BusinessServicesProps) {
@@ -18,6 +19,7 @@ export function BusinessServices({ services }: BusinessServicesProps) {
                 <th scope="col">Duration</th>
                 <th scope="col">Status</th>
                 <th scope="col">Assigned specialists</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -32,6 +34,16 @@ export function BusinessServices({ services }: BusinessServicesProps) {
                           .map(({ name, isActive }) => (isActive ? name : `${name} (inactive)`))
                           .join(', ')
                       : 'Unassigned'}
+                  </td>
+                  <td>
+                    <ServiceEditForm
+                      serviceId={service.id}
+                      initialValues={{
+                        name: service.name,
+                        durationMinutes: service.durationMinutes,
+                        isActive: service.isActive,
+                      }}
+                    />
                   </td>
                 </tr>
               ))}

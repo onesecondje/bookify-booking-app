@@ -1,4 +1,18 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
+import type { ServiceUpdate } from './types/service-update.types.js';
+
+export async function updateManagedBusinessService(
+  database: PrismaClient,
+  businessId: string,
+  serviceId: string,
+  data: ServiceUpdate,
+): Promise<boolean> {
+  const { count } = await database.service.updateMany({
+    where: { businessId, id: serviceId },
+    data,
+  });
+  return count === 1;
+}
 
 export async function findManagedBusinessServices(database: PrismaClient, businessId: string) {
   const business = await database.business.findUnique({
