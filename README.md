@@ -1,18 +1,30 @@
 # Bookify
 
+**English** | [Українська](README.uk.md)
+
 A Booksy-style application for booking service appointments.
+
+## Current features
+
+- Guests choose a service, an assigned specialist, and an available time, then
+  enter their name and phone number to confirm the booking.
+- Availability uses the specialist's weekly schedule in the business time zone
+  and existing bookings. PostgreSQL prevents overlapping active bookings for
+  the same specialist, including concurrent requests.
+- The protected `/business` dashboard lets staff review and cancel upcoming
+  bookings, edit a specialist's weekly working hours, and create or edit
+  services. Staff choose the assigned specialists when creating a service.
 
 ## Project structure
 
-- `frontend/`: Next.js and React service catalogue. See [frontend documentation](frontend/README.md).
+- `frontend/`: Next.js and React booking flow and business dashboard. See [frontend documentation](frontend/README.md).
 - `backend/`: Express and TypeScript API. See [backend documentation](backend/README.md).
 - `compose.yaml`: local PostgreSQL development environment.
 
-PostgreSQL runs in Docker. The frontend and backend currently run directly on
-the host. The backend connects to PostgreSQL using Prisma Client with a shared `pg` pool, checks the connection
-before accepting HTTP requests, and closes its pool during graceful shutdown.
-The initial migration defines businesses and their services. An explicit demo seed
-adds one business and three services. No booking endpoints have been added yet.
+PostgreSQL runs in Docker. The frontend and backend run directly on the host.
+The backend connects to PostgreSQL using Prisma Client with a shared `pg` pool,
+checks the connection before accepting HTTP requests, and closes the pool
+during graceful shutdown.
 
 ## Requirements
 
@@ -111,13 +123,16 @@ an existing database, change its roles, or reset its password.
 
 - Root `.env`: configuration read by Docker Compose.
 - `backend/.env`: configuration loaded by the backend development command.
+- `frontend/.env.local`: optional server-side configuration read by Next.js.
 
 They are separate files with separate consumers. Compose reads the root `.env`
 for variable substitution; the service's `environment` section selects which
 values enter the container. It does not pass these values to the host Node.js
 process. Set `DATABASE_URL` in `backend/.env` to match the database settings in
 the root `.env`. See [backend setup](backend/README.md) for the connection string
-format and startup instructions.
+format. To use the dashboard, configure the same managed business ID and API
+token in both applications and set a separate dashboard password in the
+frontend. See [dashboard setup](frontend/README.md#business-dashboard).
 
 ## Apply the database schema
 
@@ -127,9 +142,10 @@ After configuring `backend/.env` and installing backend dependencies, run:
 pnpm -C backend db:migrate
 ```
 
-Prisma Migrate creates the `businesses` and `services` tables in a new database
-and records migration history in `_prisma_migrations`. Re-running the command skips already applied migrations.
-The API does not run migrations automatically. See [migration documentation](backend/prisma/migrations/README.md)
+Prisma Migrate applies pending migrations for businesses, services, specialists,
+service assignments, weekly working periods, and bookings. It records migration
+history in `_prisma_migrations` and skips already applied migrations. Run the
+command explicitly before starting the API. See the [migration documentation](backend/prisma/migrations/README.md)
 for the schema and how to add future changes.
 
 Run `pnpm -C backend db:generate` after installing backend dependencies. Existing
@@ -137,21 +153,20 @@ databases created by the previous SQL runner require the documented baseline
 procedure before using Prisma deployment.
 
 Optionally populate the development database with `pnpm -C backend db:seed`.
-See the backend README for demo IDs and repeat-run behavior.
+The demo includes one business, three services, and two specialists with weekday
+working hours. See [demo data](backend/README.md#demonstration-data) for IDs and
+repeat-run behavior.
 
-The public API now exposes `GET /api/businesses/:businessId/services` for active
-services. See the backend README for response fields and error behavior.
+## Run the applications
 
-The frontend home page now reads that API on the Next.js server and displays the
-service catalogue. See the frontend README for environment settings and startup.
+After starting PostgreSQL, installing dependencies for both applications, and
+setting up the database, run these commands in separate terminals:
 
-The database now includes specialists and their service assignments, with database
-constraints preventing assignments across businesses. The explicit seed includes
-two specialists and three assignments. The public API lists active assigned specialists
-at `GET /api/businesses/:businessId/services/:serviceId/specialists`.
-The frontend supports URL-based service selection and displays active specialists
-for that service. Users can select a specialist through the URL and review the
-service, duration and specialist together. A migration defines weekly specialist
-working periods with database-enforced bounds and non-overlap. The explicit seed
-adds weekday working periods for Alice and Alex. Scheduling APIs and appointment
-availability are not implemented yet.
+```sh
+pnpm -C backend dev
+pnpm -C frontend dev
+```
+
+- [Public booking page](http://localhost:3000/)
+- [Business dashboard](http://localhost:3000/business)
+- [Backend health endpoint](http://localhost:4000/api/health)
