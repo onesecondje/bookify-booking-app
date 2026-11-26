@@ -918,6 +918,96 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       },
     );
 
+    await t.test('service assignments can be replaced without changing bookings', async () => {
+      const editable = await makeService(business.id, 'Assignment edit');
+      const assignmentKey = { businessId: business.id, serviceId: editable.id };
+      await prisma.specialistService.createMany({
+        data: [first.id, disabled.id].map((specialistId) => ({ ...assignmentKey, specialistId })),
+      });
+      const assignmentIds = async () =>
+        (await prisma.specialistService.findMany({ where: assignmentKey }))
+          .map(({ specialistId }) => specialistId)
+          .sort();
+      const update = { name: 'Updated assignments', durationMinutes: 45, isActive: true };
+      const edit = (data) =>
+        globalThis.fetch(`${origin}/api/businesses/${business.id}/manage/services/${editable.id}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+      const book = (specialistId, date) =>
+        globalThis.fetch(
+          `${origin}/api/businesses/${business.id}/services/${editable.id}/specialists/${specialistId}/bookings`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date,
+              startsAt: `${date}T08:00:00Z`,
+              customerName: 'Example Guest',
+              customerPhone: '+12025550123',
+            }),
+          },
+        );
+
+      const booked = await book(first.id, '2099-01-20');
+      assert.equal(booked.status, 201);
+      const { booking } = await booked.json();
+      const bookingWhere = { id: booking.id };
+      const originalBooking = await prisma.booking.findUniqueOrThrow({ where: bookingWhere });
+
+      for (const specialistIds of [null, ['invalid'], [disabled.id, disabled.id.toUpperCase()]]) {
+        assert.equal((await edit({ ...update, specialistIds })).status, 400);
+      }
+      for (const id of [alex.id, foreignSpecialist.id, randomUUID()]) {
+        await expectError(
+          await edit({ ...update, specialistIds: [second.id, id] }),
+          404,
+          'SPECIALIST_NOT_FOUND',
+          'One or more selected specialists are unavailable.',
+        );
+      }
+      assert.deepEqual(await assignmentIds(), [first.id, disabled.id].sort());
+      assert.deepEqual(
+        await prisma.service.findUniqueOrThrow({ where: { id: editable.id } }),
+        editable,
+      );
+
+      assert.equal(
+        (await edit({ ...update, specialistIds: [second.id, disabled.id] })).status,
+        204,
+      );
+      assert.deepEqual(await assignmentIds(), [second.id, disabled.id].sort());
+      assert.deepEqual(await (await request(business.id, editable.id)).json(), {
+        specialists: [second],
+      });
+      assert.equal((await book(first.id, '2099-01-27')).status, 404);
+      assert.equal((await book(second.id, '2099-01-15')).status, 201);
+
+      assert.equal((await edit({ ...update, specialistIds: [] })).status, 204);
+      assert.deepEqual(await assignmentIds(), []);
+      assert.deepEqual(await (await request(business.id, editable.id)).json(), {
+        specialists: [],
+      });
+      assert.deepEqual(
+        await prisma.booking.findUniqueOrThrow({ where: bookingWhere }),
+        originalBooking,
+      );
+
+      const concurrent = await Promise.all([
+        edit({ ...update, name: 'First assignment', specialistIds: [first.id] }),
+        edit({ ...update, name: 'Second assignment', specialistIds: [second.id] }),
+      ]);
+      assert.deepEqual(
+        concurrent.map(({ status }) => status),
+        [204, 204],
+      );
+      const saved = await prisma.service.findUniqueOrThrow({ where: { id: editable.id } });
+      assert.deepEqual(await assignmentIds(), [
+        saved.name === 'First assignment' ? first.id : second.id,
+      ]);
+    });
+
     await t.test(
       'database failures stay generic and UUID validation needs no database query',
       async (context) => {

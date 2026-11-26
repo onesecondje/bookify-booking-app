@@ -1,18 +1,26 @@
-import type { BusinessService, BusinessServiceUpdate } from '@/lib/types/business-services.types';
-import type { SpecialistSummary } from '@/lib/types/specialists.types';
+import type {
+  BusinessService,
+  BusinessServiceSpecialist,
+} from '@/lib/types/business-services.types';
 
 export interface BusinessServicesProps {
   services: BusinessService[] | null;
-  specialists: SpecialistSummary[] | null;
+  specialists: BusinessServiceSpecialist[] | null;
 }
 
 export interface ServiceCreateFormProps {
-  specialists: SpecialistSummary[];
+  specialists: BusinessServiceSpecialist[];
 }
 
 export interface ServiceEditFormProps {
-  serviceId: string;
-  initialValues: BusinessServiceUpdate;
+  service: BusinessService;
+  specialists: BusinessServiceSpecialist[] | null;
+}
+
+export interface ServiceSpecialistChoicesProps {
+  specialists: BusinessServiceSpecialist[];
+  selectedIds: string[];
+  onToggle: (id: string, checked: boolean) => void;
 }
 
 export interface ServiceFormState {

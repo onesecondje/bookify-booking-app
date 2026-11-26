@@ -110,16 +110,27 @@ export function createServicesRouter(
         res.status(400).json({
           error: {
             code: ApiErrorCode.InvalidServiceUpdate,
-            message: 'Provide a nonblank name, a positive integer duration, and an active status.',
+            message:
+              'Provide a name, a positive integer duration, an active status, and distinct specialist IDs if supplied.',
           },
         });
         return;
       }
-      if (
-        !(await updateManagedBusinessService(database, businessId.toLowerCase(), serviceId, update))
-      ) {
+      const error = await updateManagedBusinessService(
+        database,
+        businessId.toLowerCase(),
+        serviceId.toLowerCase(),
+        update,
+      );
+      if (error) {
         res.status(404).json({
-          error: { code: ApiErrorCode.ServiceNotFound, message: 'Service not found.' },
+          error: {
+            code: error,
+            message:
+              error === ApiErrorCode.ServiceNotFound
+                ? 'Service not found.'
+                : 'One or more selected specialists are unavailable.',
+          },
         });
         return;
       }

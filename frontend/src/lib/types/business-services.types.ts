@@ -10,7 +10,12 @@ export interface BusinessService extends ServiceSummary {
   specialists: BusinessServiceSpecialist[];
 }
 
-export type BusinessServiceUpdate = Pick<BusinessService, 'name' | 'durationMinutes' | 'isActive'>;
+export type BusinessServiceUpdate = Pick<
+  BusinessService,
+  'name' | 'durationMinutes' | 'isActive'
+> & {
+  specialistIds?: string[];
+};
 
 export type BusinessServiceCreation = Pick<BusinessServiceUpdate, 'name' | 'durationMinutes'> & {
   specialistIds: string[];

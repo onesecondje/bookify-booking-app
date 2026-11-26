@@ -501,10 +501,15 @@ specialist from the managed business. The service and its assignments are
 saved together and a successful request returns `201 { service: { id } }`.
 
 `PUT /api/businesses/:businessId/manage/services/:serviceId` uses the same
-access checks and updates the service name, duration in whole minutes, and
-active status. Send `{ name, durationMinutes, isActive }`. A successful
-update returns `204`. New availability and bookings use the updated duration.
-Existing booking rows and specialist assignments are preserved.
+access checks and updates the service name, duration in whole minutes, active
+status, and optionally its assigned specialists. Send
+`{ name, durationMinutes, isActive, specialistIds? }`. Providing distinct
+specialist IDs replaces the assignments in the same transaction as the service
+update. Omit `specialistIds` to keep the assignments, or send `[]` to clear
+them. New assignments require active specialists from the managed business.
+An already assigned inactive specialist can be kept or removed. A successful
+update returns `204`. New availability and bookings use the updated duration and
+assignments. Existing booking rows are preserved.
 
 ## Public service catalogue
 

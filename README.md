@@ -13,7 +13,7 @@ A Booksy-style application for booking service appointments.
   the same specialist, including concurrent requests.
 - The protected `/business` dashboard lets staff review and cancel upcoming
   bookings, edit a specialist's weekly working hours, and create or edit
-  services. Staff choose the assigned specialists when creating a service.
+  services. Staff choose the assigned specialists when creating or editing a service.
 
 ## Project structure
 

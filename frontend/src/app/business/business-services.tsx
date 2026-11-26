@@ -44,14 +44,7 @@ export function BusinessServices({ services, specialists }: BusinessServicesProp
                       : 'Unassigned'}
                   </td>
                   <td>
-                    <ServiceEditForm
-                      serviceId={service.id}
-                      initialValues={{
-                        name: service.name,
-                        durationMinutes: service.durationMinutes,
-                        isActive: service.isActive,
-                      }}
-                    />
+                    <ServiceEditForm service={service} specialists={specialists} />
                   </td>
                 </tr>
               ))}

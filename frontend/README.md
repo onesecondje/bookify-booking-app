@@ -187,9 +187,11 @@ for future booking requests and preserves existing appointments.
 **Services** lists each active or inactive service with its duration and
 assigned specialists. Inactive specialists are marked, and services without
 assignments show **Unassigned**.
-Expand **Edit** to change a service's name, duration in minutes, or active
-status. New bookings use the current duration. Existing bookings keep their
-stored start and end times. The dashboard displays the current service name.
+Expand **Edit** to change a service's name, duration in minutes, active
+status, or assigned specialists. Check active specialists to add them and clear
+checkboxes to remove assignments. Clearing all checkboxes leaves the service
+without specialists for new bookings. Existing bookings keep their specialist
+and stored start and end times. The dashboard displays the current service name.
 
 Expand **Add service**, enter a name and duration, and choose one or more
 active specialists. The new service is active and appears in the public

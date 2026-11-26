@@ -80,15 +80,25 @@ export async function saveService(
     };
   }
 
+  const specialistIds =
+    form.get('editSpecialists') === 'true' ? form.getAll('specialistIds') : undefined;
+  if (specialistIds && !specialistIds.every(isUuid)) {
+    return { saved: false, message: 'Check the specialist selection.' };
+  }
+
   const result = await updateBusinessService(serviceId, {
     ...details,
     isActive: status === 'true',
+    specialistIds,
   });
   if (result === 400) {
-    return { saved: false, message: 'Enter a valid service name, duration, and status.' };
+    return { saved: false, message: 'Check the service details and specialist selection.' };
   }
   if (result === 404) {
-    return { saved: false, message: 'This service is unavailable.' };
+    return {
+      saved: false,
+      message: 'The service or a selected specialist is unavailable. Refresh and try again.',
+    };
   }
   if (result !== 204) {
     return {

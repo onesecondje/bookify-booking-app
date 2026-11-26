@@ -3,17 +3,25 @@
 import { useActionState, useState } from 'react';
 import styles from './business-bookings.module.css';
 import { saveService } from './business-services.actions';
+import { ServiceSpecialistChoices } from './service-specialist-choices';
 import type { ServiceEditFormProps } from './types/business-services.types';
 
-export function ServiceEditForm({ serviceId, initialValues }: ServiceEditFormProps) {
-  const [state, action, pending] = useActionState(saveService.bind(null, serviceId), null);
-  const [name, setName] = useState(initialValues.name);
-  const [duration, setDuration] = useState(String(initialValues.durationMinutes));
-  const [isActive, setIsActive] = useState(String(initialValues.isActive));
+export function ServiceEditForm({ service, specialists }: ServiceEditFormProps) {
+  const [state, action, pending] = useActionState(saveService.bind(null, service.id), null);
+  const [name, setName] = useState(service.name);
+  const [duration, setDuration] = useState(String(service.durationMinutes));
+  const [isActive, setIsActive] = useState(String(service.isActive));
+  const [specialistIds, setSpecialistIds] = useState(() => service.specialists.map(({ id }) => id));
+  const specialistChoices = specialists && [
+    ...specialists,
+    ...service.specialists.filter(
+      ({ id }) => !specialists.some((specialist) => specialist.id === id),
+    ),
+  ];
 
   return (
     <details className={styles.serviceEditor}>
-      <summary>Edit {initialValues.name}</summary>
+      <summary>Edit {service.name}</summary>
       <form action={action}>
         <fieldset disabled={pending}>
           <legend>Service details</legend>
@@ -50,6 +58,22 @@ export function ServiceEditForm({ serviceId, initialValues }: ServiceEditFormPro
               <option value="false">Inactive</option>
             </select>
           </label>
+          {specialistChoices === null ? (
+            <p>Specialists are unavailable. Refresh the page to edit assignments.</p>
+          ) : (
+            <>
+              <input type="hidden" name="editSpecialists" value="true" />
+              <ServiceSpecialistChoices
+                specialists={specialistChoices}
+                selectedIds={specialistIds}
+                onToggle={(id, checked) =>
+                  setSpecialistIds((previous) =>
+                    checked ? [...previous, id] : previous.filter((selected) => selected !== id),
+                  )
+                }
+              />
+            </>
+          )}
           <button type="submit">{pending ? 'Saving…' : 'Save service'}</button>
         </fieldset>
         {state && <p role={state.saved ? 'status' : 'alert'}>{state.message}</p>}

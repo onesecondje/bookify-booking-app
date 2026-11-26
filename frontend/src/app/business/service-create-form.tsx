@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import styles from './business-bookings.module.css';
 import { createService } from './business-services.actions';
+import { ServiceSpecialistChoices } from './service-specialist-choices';
 import type { ServiceCreateFormProps, ServiceFormState } from './types/business-services.types';
 
 export function ServiceCreateForm({ specialists }: ServiceCreateFormProps) {
@@ -50,26 +51,15 @@ export function ServiceCreateForm({ specialists }: ServiceCreateFormProps) {
               required
             />
           </label>
-          <fieldset className={styles.specialistChoices}>
-            <legend>Specialists</legend>
-            {specialists.map(({ id, name }) => (
-              <label key={id}>
-                <input
-                  type="checkbox"
-                  name="specialistIds"
-                  value={id}
-                  checked={specialistIds.includes(id)}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    setSpecialistIds((previous) =>
-                      checked ? [...previous, id] : previous.filter((selected) => selected !== id),
-                    );
-                  }}
-                />
-                {name}
-              </label>
-            ))}
-          </fieldset>
+          <ServiceSpecialistChoices
+            specialists={specialists}
+            selectedIds={specialistIds}
+            onToggle={(id, checked) =>
+              setSpecialistIds((previous) =>
+                checked ? [...previous, id] : previous.filter((selected) => selected !== id),
+              )
+            }
+          />
           <button type="submit">{pending ? 'Creating…' : 'Create service'}</button>
         </fieldset>
         {state && <p role={state.saved ? 'status' : 'alert'}>{state.message}</p>}
