@@ -210,6 +210,8 @@ slot that fits the service duration.
    and assigned specialist. Provide separate views for supervisors and
    specialists. Supervisors see bookings across their business, and specialists
    see only their own bookings.
+3. Add booking filters to the business dashboard. Staff can switch between
+   **All bookings**, **Confirmed bookings**, and **Rejected bookings**.
 
 ## Verification
 
