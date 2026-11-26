@@ -7,7 +7,9 @@ import type { BookingRequest } from './types/booking.types.js';
 export async function createBooking(database: PrismaClient, request: BookingRequest) {
   const { businessId, serviceId, specialistId, date, startsAt } = request;
   const result = await getScheduleAvailability(database, businessId, serviceId, specialistId, date);
-  if (result.error) return { status: 404, error: result.error } as const;
+  if (result.error) {
+    return { status: 404, error: result.error } as const;
+  }
 
   const slot = result.availability.slots.find((candidate) => candidate.startsAt === startsAt);
   if (!slot) {

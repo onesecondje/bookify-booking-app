@@ -1,11 +1,19 @@
 import type { BookingContact, BookingSelection } from './types/booking-confirmation.types';
 
 export function parseBookingContactError(payload: unknown): keyof BookingContact | undefined {
-  if (typeof payload !== 'object' || payload === null || !('error' in payload)) return undefined;
+  if (typeof payload !== 'object' || payload === null || !('error' in payload)) {
+    return undefined;
+  }
   const error = payload.error;
-  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
-  if (error.code === 'INVALID_CUSTOMER_NAME') return 'customerName';
-  if (error.code === 'INVALID_CUSTOMER_PHONE') return 'customerPhone';
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return undefined;
+  }
+  if (error.code === 'INVALID_CUSTOMER_NAME') {
+    return 'customerName';
+  }
+  if (error.code === 'INVALID_CUSTOMER_PHONE') {
+    return 'customerPhone';
+  }
   return undefined;
 }
 import { isUtcInstant } from './validation/utc-instant';

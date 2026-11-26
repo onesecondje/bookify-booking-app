@@ -8,7 +8,9 @@ export async function getBusinessBookings(): Promise<BusinessBooking[] | null> {
   try {
     const { url, options } = businessApiRequest('bookings');
     const response = await fetch(url, options);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
     return parseBusinessBookings(await response.json());
   } catch {
     return null;
@@ -16,7 +18,9 @@ export async function getBusinessBookings(): Promise<BusinessBooking[] | null> {
 }
 
 export async function cancelBusinessBooking(bookingId: string): Promise<boolean> {
-  if (!isUuid(bookingId)) return false;
+  if (!isUuid(bookingId)) {
+    return false;
+  }
   try {
     const { url, options } = businessApiRequest('bookings');
     url.pathname += `/${bookingId}/cancel`;

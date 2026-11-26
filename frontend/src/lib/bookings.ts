@@ -39,12 +39,18 @@ export async function createBooking(
       signal: AbortSignal.timeout(5000),
     });
 
-    if (response.status === 409) return { status: BookingConfirmationStatus.Conflict };
+    if (response.status === 409) {
+      return { status: BookingConfirmationStatus.Conflict };
+    }
     if (response.status === 400) {
       const field = parseBookingContactError(await response.json());
-      if (field) return { status: BookingConfirmationStatus.InvalidContact, field };
+      if (field) {
+        return { status: BookingConfirmationStatus.InvalidContact, field };
+      }
     }
-    if (response.status !== 201) throw new Error('Booking request failed.');
+    if (response.status !== 201) {
+      throw new Error('Booking request failed.');
+    }
 
     return {
       status: BookingConfirmationStatus.Confirmed,

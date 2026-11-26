@@ -15,7 +15,9 @@ export function replaceSpecialistWorkingDay(
         where: { businessId_id: { businessId, id: specialistId } },
         select: { id: true },
       });
-      if (!specialist) return false;
+      if (!specialist) {
+        return false;
+      }
 
       const day = { businessId, specialistId, weekday };
       await tx.specialistWorkingPeriod.deleteMany({ where: day });
@@ -45,13 +47,17 @@ export async function findBusinessSchedule(
       },
     },
   });
-  if (!business) return null;
+  if (!business) {
+    return null;
+  }
 
   const { specialists, timeZone } = business;
   const specialist = specialistId
     ? specialists.find(({ id }) => id === specialistId)
     : specialists[0];
-  if (!specialist) return { specialists, schedule: null };
+  if (!specialist) {
+    return { specialists, schedule: null };
+  }
 
   const workingPeriods = await database.specialistWorkingPeriod.findMany({
     where: { businessId, specialistId: specialist.id },
@@ -85,10 +91,14 @@ export async function findServiceSpecialists(
     },
   });
 
-  if (business === null) return { status: ServiceSpecialistsStatus.BusinessNotFound } as const;
+  if (business === null) {
+    return { status: ServiceSpecialistsStatus.BusinessNotFound } as const;
+  }
 
   const service = business.services[0];
-  if (service === undefined) return { status: ServiceSpecialistsStatus.ServiceNotFound } as const;
+  if (service === undefined) {
+    return { status: ServiceSpecialistsStatus.ServiceNotFound } as const;
+  }
 
   return {
     status: ServiceSpecialistsStatus.Ready,

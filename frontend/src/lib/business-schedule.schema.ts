@@ -35,11 +35,14 @@ export function parseBusinessSchedule(payload: unknown): BusinessScheduleRespons
     !('specialists' in payload) ||
     !Array.isArray(payload.specialists) ||
     !payload.specialists.every(isScheduleSpecialist)
-  )
+  ) {
     throw new Error('Invalid business schedule response.');
+  }
 
   const { schedule, specialists } = payload;
-  if (schedule === null) return { specialists, schedule };
+  if (schedule === null) {
+    return { specialists, schedule };
+  }
   if (
     typeof schedule !== 'object' ||
     !('id' in schedule) ||
@@ -52,8 +55,9 @@ export function parseBusinessSchedule(payload: unknown): BusinessScheduleRespons
     !('workingPeriods' in schedule) ||
     !Array.isArray(schedule.workingPeriods) ||
     !schedule.workingPeriods.every(isWorkingPeriod)
-  )
+  ) {
     throw new Error('Invalid business schedule response.');
+  }
 
   const { id, name, timeZone, workingPeriods } = schedule;
   return { specialists, schedule: { id, name, timeZone, workingPeriods } };

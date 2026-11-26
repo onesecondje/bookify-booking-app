@@ -13,7 +13,9 @@ import type { BusinessDashboardProps } from './types/business-dashboard.types';
 import { WeeklySchedule } from './weekly-schedule';
 
 export default async function BusinessDashboard({ searchParams }: BusinessDashboardProps) {
-  if (!canViewBusinessDashboard((await headers()).get('authorization'))) notFound();
+  if (!canViewBusinessDashboard((await headers()).get('authorization'))) {
+    notFound();
+  }
 
   const { specialistId } = await searchParams;
   const selectedId = isUuid(specialistId) ? specialistId : undefined;

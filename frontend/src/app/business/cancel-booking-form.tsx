@@ -10,8 +10,9 @@ export function CancelBookingForm({ bookingId }: CancelBookingFormProps) {
     <form
       action={action}
       onSubmit={(event) => {
-        if (!window.confirm('Cancel this booking and release its time slot?'))
+        if (!window.confirm('Cancel this booking and release its time slot?')) {
           event.preventDefault();
+        }
       }}
     >
       <button type="submit" disabled={pending}>

@@ -54,7 +54,9 @@ export async function getBookingAvailability(
   date: NonNullable<ReturnType<typeof parseLocalDate>>,
 ) {
   const result = await getScheduleAvailability(database, businessId, serviceId, specialistId, date);
-  if (result.error) return result;
+  if (result.error) {
+    return result;
+  }
 
   const { availability } = result;
   const candidates = availability.slots.map((slot) => ({
@@ -64,7 +66,9 @@ export async function getBookingAvailability(
   }));
   const first = candidates[0];
   const last = candidates.at(-1);
-  if (!first || !last) return result;
+  if (!first || !last) {
+    return result;
+  }
 
   // Slots are ordered by start and have the same elapsed service duration.
   const bookings = await findActiveBookingsInWindow(

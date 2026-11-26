@@ -163,7 +163,9 @@ test('bookings retain their intervals and atomically prevent active specialist o
             [pid],
           );
           blocking = rows[0].blocking;
-          if (!blocking) await delay(10);
+          if (!blocking) {
+            await delay(10);
+          }
         }
         assert.ok(blocking, 'The competing insert must wait on the uncommitted booking');
         await first.query('COMMIT');

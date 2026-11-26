@@ -10,8 +10,12 @@ export async function getBusinessServices(): Promise<CatalogueResult> {
     const url = new URL(`/api/businesses/${businessId}/services`, apiOrigin);
     const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
 
-    if (response.status === 404) return { status: CatalogueLoadStatus.NotFound };
-    if (!response.ok) throw new Error('Service catalogue request failed.');
+    if (response.status === 404) {
+      return { status: CatalogueLoadStatus.NotFound };
+    }
+    if (!response.ok) {
+      throw new Error('Service catalogue request failed.');
+    }
 
     return {
       status: CatalogueLoadStatus.Ready,

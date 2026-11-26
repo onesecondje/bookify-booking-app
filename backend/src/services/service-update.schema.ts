@@ -15,8 +15,9 @@ export function parseServiceUpdate(body: unknown): ServiceUpdate | null {
     body.durationMinutes > 2_147_483_647 ||
     !('isActive' in body) ||
     typeof body.isActive !== 'boolean'
-  )
+  ) {
     return null;
+  }
 
   return {
     name: body.name.trim(),

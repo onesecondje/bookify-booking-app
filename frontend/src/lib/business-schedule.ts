@@ -8,9 +8,13 @@ export async function getBusinessSchedule(
 ): Promise<BusinessScheduleResponse | null> {
   try {
     const { url, options } = businessApiRequest('schedule');
-    if (specialistId !== undefined) url.searchParams.set('specialistId', specialistId);
+    if (specialistId !== undefined) {
+      url.searchParams.set('specialistId', specialistId);
+    }
     const response = await fetch(url, options);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
     return parseBusinessSchedule(await response.json());
   } catch {
     return null;

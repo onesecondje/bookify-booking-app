@@ -11,9 +11,15 @@ export async function getSpecialistAvailability(
   specialistId: string,
   date: string,
 ): Promise<AvailabilityResult> {
-  if (!isUuid(serviceId)) return { status: AvailabilityLoadStatus.InvalidServiceId };
-  if (!isUuid(specialistId)) return { status: AvailabilityLoadStatus.InvalidSpecialistId };
-  if (!isLocalDate(date)) return { status: AvailabilityLoadStatus.InvalidDate };
+  if (!isUuid(serviceId)) {
+    return { status: AvailabilityLoadStatus.InvalidServiceId };
+  }
+  if (!isUuid(specialistId)) {
+    return { status: AvailabilityLoadStatus.InvalidSpecialistId };
+  }
+  if (!isLocalDate(date)) {
+    return { status: AvailabilityLoadStatus.InvalidDate };
+  }
 
   try {
     const { apiOrigin, businessId } = getCatalogueConfig();
@@ -27,10 +33,14 @@ export async function getSpecialistAvailability(
     if (response.status === 404) {
       return { status: parseAvailabilityNotFoundStatus(await response.json()) };
     }
-    if (!response.ok) throw new Error('Availability request failed.');
+    if (!response.ok) {
+      throw new Error('Availability request failed.');
+    }
 
     const availability = parseAvailabilityResponse(await response.json());
-    if (availability.date !== date) throw new Error('Availability date does not match request.');
+    if (availability.date !== date) {
+      throw new Error('Availability date does not match request.');
+    }
     return { status: AvailabilityLoadStatus.Ready, availability };
   } catch {
     // Do not log URLs, response bodies, or internal error details.

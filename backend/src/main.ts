@@ -16,7 +16,9 @@ function errorCode(error: unknown): string {
 async function shutdown(exitCode: number): Promise<void> {
   process.exitCode = Math.max(Number(process.exitCode ?? 0), exitCode);
 
-  if (shuttingDown) return;
+  if (shuttingDown) {
+    return;
+  }
   shuttingDown = true;
 
   // A stuck request or connection must not prevent shutdown indefinitely.

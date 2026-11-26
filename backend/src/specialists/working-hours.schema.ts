@@ -23,12 +23,14 @@ export function parseWorkingHours(body: unknown): WorkingHours[] | null {
     !('periods' in body) ||
     !Array.isArray(body.periods) ||
     !body.periods.every(isWorkingHours)
-  )
+  ) {
     return null;
+  }
 
   const periods = [...body.periods].sort((a, b) => a.startMinute - b.startMinute);
-  if (periods.some((period, index) => (periods[index - 1]?.endMinute ?? 0) > period.startMinute))
+  if (periods.some((period, index) => (periods[index - 1]?.endMinute ?? 0) > period.startMinute)) {
     return null;
+  }
 
   return periods.map(({ startMinute, endMinute }) => ({ startMinute, endMinute }));
 }

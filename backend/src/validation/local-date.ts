@@ -7,7 +7,9 @@ export function parseLocalDate(value: unknown): Temporal.PlainDate | undefined {
   try {
     return Temporal.PlainDate.from(value);
   } catch (error) {
-    if (error instanceof RangeError) return undefined;
+    if (error instanceof RangeError) {
+      return undefined;
+    }
     throw error;
   }
 }

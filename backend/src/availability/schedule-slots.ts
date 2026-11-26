@@ -66,8 +66,9 @@ export function generateScheduleSlots({
           Temporal.Instant.compare(startsAt, current) <= 0 ||
           Temporal.Instant.compare(startsAt, opensAt) < 0 ||
           Temporal.Instant.compare(endsAt, closesAt) > 0
-        )
+        ) {
           continue;
+        }
 
         slots.push({ startsAt: startsAt.toString(), endsAt: endsAt.toString() });
       }

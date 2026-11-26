@@ -87,8 +87,9 @@ export function createBusinessScheduleRouter(
         if (
           !(error instanceof Prisma.PrismaClientKnownRequestError) ||
           (error.code !== 'P2034' && error.code !== 'P2039')
-        )
+        ) {
           throw error;
+        }
         res.status(409).json({
           error: {
             code: ApiErrorCode.ScheduleConflict,

@@ -7,7 +7,9 @@ export async function getBusinessServices(): Promise<BusinessService[] | null> {
   try {
     const { url, options } = businessApiRequest('manage/services');
     const response = await fetch(url, options);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
     return parseBusinessServices(await response.json());
   } catch {
     return null;

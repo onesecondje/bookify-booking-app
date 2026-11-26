@@ -24,8 +24,9 @@ export function parseBusinessServices(payload: unknown): BusinessService[] {
     !('services' in payload) ||
     !Array.isArray(payload.services) ||
     !payload.services.every(isBusinessService)
-  )
+  ) {
     throw new Error('Invalid business services response.');
+  }
 
   return payload.services;
 }

@@ -35,7 +35,9 @@ function startBackend(t, environment) {
   });
   const exited = once(child, 'exit');
   t.after(() => {
-    if (child.exitCode === null) child.kill();
+    if (child.exitCode === null) {
+      child.kill();
+    }
   });
   return { child, exited, output: () => output };
 }

@@ -13,7 +13,9 @@ export async function cancelUpcomingBusinessBooking(
     where: { ...booking, cancelledAt: null },
     data: { cancelledAt: now },
   });
-  if (count > 0) return true;
+  if (count > 0) {
+    return true;
+  }
 
   const cancelled = await database.booking.findFirst({
     where: { ...booking, cancelledAt: { not: null } },
@@ -75,7 +77,9 @@ export async function insertBooking(
       },
     });
   } catch (error) {
-    if (isBookingOverlap(error)) return undefined;
+    if (isBookingOverlap(error)) {
+      return undefined;
+    }
     throw error;
   }
 }

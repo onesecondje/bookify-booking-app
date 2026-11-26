@@ -57,6 +57,8 @@ export function parseAvailabilityNotFoundStatus(payload: unknown) {
   }
 
   const status = availabilityNotFoundStatuses.get(payload.error.code);
-  if (status === undefined) throw new Error('Invalid availability error response.');
+  if (status === undefined) {
+    throw new Error('Invalid availability error response.');
+  }
   return status;
 }

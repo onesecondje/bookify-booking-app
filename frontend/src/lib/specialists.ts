@@ -6,7 +6,9 @@ import type { SpecialistsResult } from './types/specialists.types';
 import { isUuid } from './validation/uuid';
 
 export async function getServiceSpecialists(serviceId: string): Promise<SpecialistsResult> {
-  if (!isUuid(serviceId)) return { status: SpecialistsLoadStatus.InvalidServiceId };
+  if (!isUuid(serviceId)) {
+    return { status: SpecialistsLoadStatus.InvalidServiceId };
+  }
 
   try {
     const { apiOrigin, businessId } = getCatalogueConfig();
@@ -25,7 +27,9 @@ export async function getServiceSpecialists(serviceId: string): Promise<Speciali
             : SpecialistsLoadStatus.ServiceNotFound,
       };
     }
-    if (!response.ok) throw new Error('Specialists request failed.');
+    if (!response.ok) {
+      throw new Error('Specialists request failed.');
+    }
 
     return {
       status: SpecialistsLoadStatus.Ready,

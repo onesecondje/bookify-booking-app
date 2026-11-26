@@ -18,8 +18,9 @@ export async function saveWorkingDay(
   _previous: WorkingDayState | null,
   form: FormData,
 ): Promise<WorkingDayState> {
-  if (!canViewBusinessDashboard((await headers()).get('authorization')))
+  if (!canViewBusinessDashboard((await headers()).get('authorization'))) {
     return { saved: false, message: 'Sign in again to save working hours.' };
+  }
 
   const hours = form.get('hours');
   if (
@@ -29,8 +30,9 @@ export async function saveWorkingDay(
     weekday > 7 ||
     typeof hours !== 'string' ||
     hours.length > 20000
-  )
+  ) {
     return { saved: false, message: 'Invalid working day or working hours.' };
+  }
 
   const periods = [];
   for (const line of hours
@@ -40,24 +42,31 @@ export async function saveWorkingDay(
     const match = /^((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d|24:00)$/.exec(
       line,
     );
-    if (!match) return { saved: false, message: 'Use HH:MM-HH:MM on each line.' };
+    if (!match) {
+      return { saved: false, message: 'Use HH:MM-HH:MM on each line.' };
+    }
     periods.push({ startMinute: minuteOfDay(match[1]), endMinute: minuteOfDay(match[2]) });
   }
 
   const status = await saveBusinessWorkingDay(specialistId, weekday, periods);
-  if (status === 400)
+  if (status === 400) {
     return {
       saved: false,
       message: 'Enter non-overlapping intervals with the end after the start.',
     };
-  if (status === 409)
+  }
+  if (status === 409) {
     return { saved: false, message: 'The schedule changed. Refresh the page and try again.' };
-  if (status === 404) return { saved: false, message: 'This specialist is unavailable.' };
-  if (status !== 204)
+  }
+  if (status === 404) {
+    return { saved: false, message: 'This specialist is unavailable.' };
+  }
+  if (status !== 204) {
     return {
       saved: false,
       message: 'The save could not be confirmed. Refresh to check the schedule.',
     };
+  }
 
   revalidatePath('/business');
   return { saved: true, message: 'Working hours saved.' };
