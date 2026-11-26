@@ -11,3 +11,7 @@ export interface BusinessService extends ServiceSummary {
 }
 
 export type BusinessServiceUpdate = Pick<BusinessService, 'name' | 'durationMinutes' | 'isActive'>;
+
+export type BusinessServiceCreation = Pick<BusinessServiceUpdate, 'name' | 'durationMinutes'> & {
+  specialistIds: string[];
+};

@@ -819,6 +819,106 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       },
     );
     await t.test(
+      'businesses can create a service that guests can book with assigned specialists',
+      async () => {
+        const jsonHeaders = { 'Content-Type': 'application/json' };
+        const headers = { ...jsonHeaders, Authorization: `Bearer ${token}` };
+        const newService = {
+          name: '  Styling consultation  ',
+          durationMinutes: 45,
+          specialistIds: [second.id.toUpperCase(), first.id],
+        };
+        const create = (data = newService, credentials = headers, target = business.id) =>
+          globalThis.fetch(`${origin}/api/businesses/${target}/manage/services`, {
+            method: 'POST',
+            headers: credentials,
+            body: JSON.stringify(data),
+          });
+        const before = await prisma.service.count();
+        assert.equal((await create(newService, jsonHeaders)).status, 401);
+        assert.equal((await create(newService, headers, other.id)).status, 403);
+        for (const data of [
+          { ...newService, name: ' ' },
+          { ...newService, durationMinutes: -1 },
+          { ...newService, specialistIds: [] },
+          { ...newService, specialistIds: ['invalid'] },
+          { ...newService, specialistIds: [first.id, first.id.toUpperCase()] },
+        ]) {
+          assert.equal((await create(data)).status, 400);
+        }
+        for (const unavailable of [disabled.id, foreignSpecialist.id, randomUUID()]) {
+          assert.equal(
+            (await create({ ...newService, specialistIds: [first.id, unavailable] })).status,
+            404,
+          );
+        }
+        assert.equal(await prisma.service.count(), before);
+
+        const created = await create();
+        assert.equal(created.status, 201);
+        const {
+          service: { id },
+        } = await created.json();
+        const publicServices = await globalThis.fetch(
+          `${origin}/api/businesses/${business.id}/services`,
+        );
+        assert.equal(publicServices.status, 200);
+        assert.deepEqual(
+          (await publicServices.json()).services.find((item) => item.id === id),
+          {
+            id,
+            name: 'Styling consultation',
+            durationMinutes: 45,
+          },
+        );
+        const assigned = await request(business.id, id);
+        assert.equal(assigned.status, 200);
+        assert.deepEqual(await assigned.json(), { specialists: [first, second] });
+
+        await prisma.specialistWorkingPeriod.create({
+          data: {
+            businessId: business.id,
+            specialistId: second.id,
+            weekday: 4,
+            startMinute: 540,
+            endMinute: 660,
+          },
+        });
+        const date = '2099-01-08';
+        const availability = await request(
+          business.id,
+          id,
+          `/${second.id}/availability?date=${date}`,
+        );
+        assert.equal(availability.status, 200);
+        const { slots } = await availability.json();
+        assert.deepEqual(slots[0], { startsAt: `${date}T08:00:00Z`, endsAt: `${date}T08:45:00Z` });
+
+        const book = (specialistId) =>
+          globalThis.fetch(
+            `${origin}/api/businesses/${business.id}/services/${id}/specialists/${specialistId}/bookings`,
+            {
+              method: 'POST',
+              headers: jsonHeaders,
+              body: JSON.stringify({
+                date,
+                startsAt: slots[0].startsAt,
+                customerName: 'Example Guest',
+                customerPhone: '+12025550123',
+              }),
+            },
+          );
+        assert.equal((await book(unassigned.id)).status, 404);
+        const booked = await book(second.id);
+        assert.equal(booked.status, 201);
+        const { booking } = await booked.json();
+        assert.equal(booking.serviceId, id);
+        assert.equal(booking.specialistId, second.id);
+        assert.equal(booking.endsAt, `${date}T08:45:00.000Z`);
+      },
+    );
+
+    await t.test(
       'database failures stay generic and UUID validation needs no database query',
       async (context) => {
         const log = context.mock.method(console, 'error', () => {});

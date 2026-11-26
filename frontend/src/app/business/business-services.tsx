@@ -1,11 +1,19 @@
 import styles from './business-bookings.module.css';
+import { ServiceCreateForm } from './service-create-form';
 import { ServiceEditForm } from './service-edit-form';
 import type { BusinessServicesProps } from './types/business-services.types';
 
-export function BusinessServices({ services }: BusinessServicesProps) {
+export function BusinessServices({ services, specialists }: BusinessServicesProps) {
   return (
     <section className={styles.services} aria-labelledby="business-services-title">
       <h2 id="business-services-title">Services</h2>
+      {specialists === null ? (
+        <p role="status">Specialists are unavailable. Refresh the page to create a service.</p>
+      ) : specialists.length === 0 ? (
+        <p>An active specialist is required to create a service.</p>
+      ) : (
+        <ServiceCreateForm specialists={specialists} />
+      )}
       {services === null ? (
         <p role="status">Services are unavailable. Refresh the page to try again.</p>
       ) : services.length === 0 ? (

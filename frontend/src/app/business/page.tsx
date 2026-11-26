@@ -89,7 +89,10 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
           </table>
         </div>
       )}
-      <BusinessServices services={services} />
+      <BusinessServices
+        services={services}
+        specialists={schedule?.specialists.filter(({ isActive }) => isActive) ?? null}
+      />
       <WeeklySchedule result={schedule} invalidSelection={invalidSelection} />
     </main>
   );

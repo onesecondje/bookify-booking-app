@@ -1,5 +1,32 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
-import type { ServiceUpdate } from './types/service-update.types.js';
+import type { ServiceCreation, ServiceUpdate } from './types/service-update.types.js';
+
+export function createManagedBusinessService(
+  database: PrismaClient,
+  businessId: string,
+  { name, durationMinutes, specialistIds }: ServiceCreation,
+) {
+  return database.$transaction(async (transaction) => {
+    const activeSpecialistCount = await transaction.specialist.count({
+      where: { businessId, isActive: true, id: { in: specialistIds } },
+    });
+    if (activeSpecialistCount !== specialistIds.length) {
+      return null;
+    }
+
+    return transaction.service.create({
+      data: {
+        businessId,
+        name,
+        durationMinutes,
+        specialists: {
+          createMany: { data: specialistIds.map((specialistId) => ({ specialistId })) },
+        },
+      },
+      select: { id: true },
+    });
+  });
+}
 
 export async function updateManagedBusinessService(
   database: PrismaClient,

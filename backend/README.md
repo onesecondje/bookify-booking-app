@@ -495,6 +495,11 @@ by the business Bearer token and business scope. It returns all services with
 their ID, name, duration, active status, and assigned specialists. Assigned
 specialists include their ID, name, and active status.
 
+`POST /api/businesses/:businessId/manage/services` creates an active service.
+Send `{ name, durationMinutes, specialistIds }` with at least one distinct active
+specialist from the managed business. The service and its assignments are
+saved together and a successful request returns `201 { service: { id } }`.
+
 `PUT /api/businesses/:businessId/manage/services/:serviceId` uses the same
 access checks and updates the service name, duration in whole minutes, and
 active status. Send `{ name, durationMinutes, isActive }`. A successful

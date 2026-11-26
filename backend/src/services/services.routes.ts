@@ -3,8 +3,9 @@ import { Router } from 'express';
 import { requireBusinessAccess } from '../bookings/business-booking-access.js';
 import type { BusinessBookingAccess } from '../bookings/types/business-booking-access.types.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
-import { parseServiceUpdate } from './service-update.schema.js';
+import { parseServiceCreation, parseServiceUpdate } from './service-update.schema.js';
 import {
+  createManagedBusinessService,
   findBusinessServices,
   findManagedBusinessServices,
   updateManagedBusinessService,
@@ -55,6 +56,38 @@ export function createServicesRouter(
         return;
       }
       res.json({ services });
+    },
+  );
+
+  router.post(
+    '/businesses/:businessId/manage/services',
+    requireBusinessAccess(access),
+    async (req, res) => {
+      const data = parseServiceCreation(req.body);
+      if (!data) {
+        res.status(400).json({
+          error: {
+            code: ApiErrorCode.InvalidServiceCreation,
+            message: 'Provide a name, a positive integer duration, and distinct specialist IDs.',
+          },
+        });
+        return;
+      }
+      const service = await createManagedBusinessService(
+        database,
+        req.params.businessId.toLowerCase(),
+        data,
+      );
+      if (!service) {
+        res.status(404).json({
+          error: {
+            code: ApiErrorCode.SpecialistNotFound,
+            message: 'One or more selected specialists are unavailable.',
+          },
+        });
+        return;
+      }
+      res.status(201).json({ service });
     },
   );
 

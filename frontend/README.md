@@ -191,14 +191,18 @@ Expand **Edit** to change a service's name, duration in minutes, or active
 status. New bookings use the current duration. Existing bookings keep their
 stored start and end times. The dashboard displays the current service name.
 
+Expand **Add service**, enter a name and duration, and choose one or more
+active specialists. The new service is active and appears in the public
+catalogue. Guests can choose its assigned specialists and book any available
+slot that fits the service duration.
+
 ### Planned business features
 
-1. Add service creation and specialist assignment.
-2. Add calendar-based schedule overrides. Select a specialist and a specific
+1. Add calendar-based schedule overrides. Select a specialist and a specific
    date in the business time zone to set working hours or mark a day off. An
    override takes precedence only on that date. Keep the weekly schedule as
    the default and preserve existing bookings.
-3. Add an activity dashboard with a calendar heatmap. Each cell represents a
+2. Add an activity dashboard with a calendar heatmap. Each cell represents a
    date, and its color intensity reflects the number of bookings. Hovering
    over a cell shows the day's appointments, including time, client, service,
    and assigned specialist. Provide separate views for supervisors and
