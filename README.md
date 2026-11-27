@@ -7,13 +7,14 @@ A Booksy-style application for booking service appointments.
 ## Current features
 
 - Guests choose a service, an assigned specialist, and an available time, then
-  enter their name and phone number to confirm the booking.
+  submit their name and phone number with a booking request.
 - Availability uses the specialist's weekly schedule in the business time zone
   and existing bookings. PostgreSQL prevents overlapping active bookings for
   the same specialist, including concurrent requests.
-- The protected `/business` dashboard lets staff review and cancel upcoming
-  bookings, edit a specialist's weekly working hours, and create or edit
-  services. Staff choose the assigned specialists when creating or editing a service.
+- The protected `/business` dashboard lets staff approve or reject requests,
+  cancel confirmed bookings, edit a specialist's weekly working hours, and
+  create or edit services. Staff choose the assigned specialists when creating
+  or editing a service.
 
 ## Project structure
 

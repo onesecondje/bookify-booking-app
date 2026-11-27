@@ -53,11 +53,11 @@ export async function createBooking(
     }
 
     return {
-      status: BookingConfirmationStatus.Confirmed,
+      status: BookingConfirmationStatus.Submitted,
       bookingId: parseBookingId(await response.json(), selection, businessId),
     };
   } catch {
-    console.error('Unable to confirm booking.');
+    console.error('Unable to verify booking submission.');
     return { status: BookingConfirmationStatus.Unavailable };
   }
 }

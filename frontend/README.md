@@ -139,14 +139,15 @@ Times use the business time zone from the response. When two slots share the sam
 formatted time, their UTC offsets are also shown. The date is a calendar day in
 the business time zone. Slots reflect the working schedule and active bookings.
 
-## Booking confirmation
+## Booking requests
 
 The contact form appears after a selected start matches a slot in the current
 availability response. A Next.js Server Action sends the customer's name and
 phone with the selected date and UTC start to Express. Known contact validation
 errors are displayed beside the corresponding input, and entered values remain
 available for correction. The button is disabled while the request
-is pending. A validated `201` displays the date, local time and booking reference.
+is pending. A validated `201` displays the date, local time and booking reference
+with a message that the business still needs to confirm the booking.
 The receipt is held in form state for the current visit.
 
 On `409`, the action redirects to the same service, specialist and date without the
@@ -168,9 +169,10 @@ Express. The dashboard shows upcoming bookings, customer contacts, and booking
 status, with appointment times labeled in UTC. Dashboard responses are private
 and are not cached.
 
-Use **Cancel booking** on a confirmed booking and approve the prompt. The server
-action checks dashboard access, calls the protected cancellation endpoint, and
-refreshes the dashboard. The booking remains visible with status **Cancelled**.
+New requests display **Pending confirmation** and reserve the selected time.
+Use **Approve** to confirm a request or **Reject** to release its slot.
+Use **Cancel booking** and approve the prompt to release a confirmed slot.
+The dashboard shows rejected and cancelled bookings with their final status.
 
 In **Weekly schedule**, choose a specialist and select **Show schedule**. The
 selection is stored in the `specialistId` URL parameter. Active specialists are

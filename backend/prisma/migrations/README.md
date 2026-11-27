@@ -207,6 +207,16 @@ null contact values, and existing writers can continue omitting contact details.
 Text preserves phone prefixes and leading zeros. Contact collection and request
 validation belong to the booking flow.
 
+## Booking approval
+
+Migration `20261126000100_add_booking_approval` adds nullable `approved_at`.
+It copies `created_at` for existing bookings, including cancellations, because
+bookings were previously confirmed on creation. New bookings omit the column
+and await approval. A rejected request has `cancelled_at` set and
+`approved_at` null. Cancellation of a confirmed booking keeps both timestamps.
+The existing overlap constraint covers pending and confirmed bookings through
+its `cancelled_at IS NULL` predicate.
+
 ## Integration tests
 
 Run `pnpm -C backend test` with PostgreSQL available and CREATE SCHEMA permission.

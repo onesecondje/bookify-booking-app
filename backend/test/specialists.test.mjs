@@ -38,6 +38,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
       '20261112000100_add_specialist_working_periods',
       '20261118000100_add_bookings',
       '20261119000100_add_booking_customer_contact',
+      '20261126000100_add_booking_approval',
     ]) {
       await pool.query(
         await readFile(
@@ -433,6 +434,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
             },
           });
         const cancelled = await add(business.id, service.id, first.id, '2099-01-09', {
+          approvedAt: new Date('2098-12-31T00:00:00Z'),
           cancelledAt: new Date('2099-01-01T00:00:00Z'),
         });
         const upcoming = await add(business.id, service.id, first.id, '2099-01-08', {
@@ -453,6 +455,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
               id: booking.id,
               startsAt: booking.startsAt.toISOString(),
               endsAt: booking.endsAt.toISOString(),
+              approvedAt: booking.approvedAt?.toISOString() ?? null,
               cancelledAt: booking.cancelledAt?.toISOString() ?? null,
               customerName: booking.customerName,
               customerPhone: booking.customerPhone,
@@ -552,6 +555,7 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         endsAt: `${date}T08:30:00.000Z`,
       });
       const persisted = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      assert.equal(persisted.approvedAt, null);
       assert.equal(persisted.cancelledAt, null);
       assert.equal(persisted.customerName, 'Example Customer');
       assert.equal(persisted.customerPhone, '+12025550123');
@@ -562,7 +566,9 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         'BOOKING_CONFLICT',
         'The selected time overlaps an existing booking.',
       );
-      assert.equal((await book({ ...body, startsAt: `${date}T08:30:00Z` })).status, 201);
+      const adjacentResponse = await book({ ...body, startsAt: `${date}T08:30:00Z` });
+      assert.equal(adjacentResponse.status, 201);
+      const { booking: adjacent } = await adjacentResponse.json();
       const isSlotAvailable = async () => {
         const response = await request(
           business.id,
@@ -572,15 +578,17 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
         assert.equal(response.status, 200);
         return (await response.json()).slots.some((slot) => slot.startsAt === startsAt);
       };
-      const cancel = (id, authorization, targetBusiness = business.id) =>
-        globalThis.fetch(`${origin}/api/businesses/${targetBusiness}/bookings/${id}/cancel`, {
+      const changeBooking = (
+        action,
+        id,
+        authorization = `Bearer ${token}`,
+        targetBusiness = business.id,
+      ) =>
+        globalThis.fetch(`${origin}/api/businesses/${targetBusiness}/bookings/${id}/${action}`, {
           method: 'PATCH',
           headers: authorization ? { Authorization: authorization } : {},
         });
       assert.equal(await isSlotAvailable(), false);
-      assert.equal((await cancel(booking.id)).status, 401);
-      assert.equal((await cancel(booking.id, `Bearer ${token}`, other.id)).status, 403);
-      assert.equal((await cancel('invalid', `Bearer ${token}`)).status, 400);
       const foreignBooking = await prisma.booking.create({
         data: {
           businessId: other.id,
@@ -590,22 +598,72 @@ test('Specialist selection, availability and booking HTTP contracts', async (t) 
           endsAt: new Date(booking.endsAt),
         },
       });
-      assert.equal((await cancel(foreignBooking.id, `Bearer ${token}`)).status, 404);
+      const pastBooking = await prisma.booking.create({
+        data: {
+          businessId: business.id,
+          serviceId: service.id,
+          specialistId: first.id,
+          startsAt: new Date('2000-01-04T08:00:00Z'),
+          endsAt: new Date('2000-01-04T08:30:00Z'),
+        },
+      });
+      for (const action of ['approve', 'reject', 'cancel']) {
+        assert.equal((await changeBooking(action, booking.id, null)).status, 401);
+        assert.equal(
+          (await changeBooking(action, booking.id, `Bearer ${token}`, other.id)).status,
+          403,
+        );
+        assert.equal((await changeBooking(action, 'invalid')).status, 400);
+        assert.equal((await changeBooking(action, foreignBooking.id)).status, 404);
+        assert.equal((await changeBooking(action, pastBooking.id)).status, 404);
+      }
       assert.equal(
         (await prisma.booking.findUniqueOrThrow({ where: { id: foreignBooking.id } })).cancelledAt,
         null,
       );
       assert.equal(await isSlotAvailable(), false);
-      assert.equal((await cancel(booking.id, `Bearer ${token}`)).status, 204);
+      assert.equal((await changeBooking('cancel', booking.id)).status, 409);
+      assert.equal((await changeBooking('approve', booking.id)).status, 204);
+      const approved = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      assert.ok(approved.approvedAt);
+      assert.equal(approved.cancelledAt, null);
+      assert.equal(await isSlotAvailable(), false);
+      await expectError(
+        await changeBooking('reject', booking.id),
+        409,
+        'BOOKING_STATE_CONFLICT',
+        'This action is unavailable for the current booking status.',
+      );
+      assert.equal((await changeBooking('cancel', booking.id)).status, 204);
       const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
       assert.ok(after.cancelledAt);
-      assert.equal((await cancel(booking.id, `Bearer ${token}`)).status, 204);
+      assert.deepEqual(after.approvedAt, approved.approvedAt);
+      assert.equal((await changeBooking('cancel', booking.id)).status, 204);
       assert.deepEqual(
         (await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).cancelledAt,
         after.cancelledAt,
       );
       assert.equal(await isSlotAvailable(), true);
+      const rebooked = await book(body);
+      assert.equal(rebooked.status, 201);
+      const { booking: pending } = await rebooked.json();
+      assert.equal(await isSlotAvailable(), false);
+      assert.equal((await changeBooking('reject', pending.id)).status, 204);
+      const rejected = await prisma.booking.findUniqueOrThrow({ where: { id: pending.id } });
+      assert.equal(rejected.approvedAt, null);
+      assert.ok(rejected.cancelledAt);
+      assert.equal((await changeBooking('approve', pending.id)).status, 409);
+      assert.equal(await isSlotAvailable(), true);
       assert.equal((await book(body)).status, 201);
+
+      const [approval, rejection] = await Promise.all([
+        changeBooking('approve', adjacent.id),
+        changeBooking('reject', adjacent.id),
+      ]);
+      assert.deepEqual([approval.status, rejection.status].sort(), [204, 409]);
+      const reviewed = await prisma.booking.findUniqueOrThrow({ where: { id: adjacent.id } });
+      assert.equal(Boolean(reviewed.approvedAt), approval.status === 204);
+      assert.equal(Boolean(reviewed.cancelledAt), rejection.status === 204);
 
       const competing = await Promise.all([
         book({ ...body, startsAt: `${date}T09:00:00Z` }),

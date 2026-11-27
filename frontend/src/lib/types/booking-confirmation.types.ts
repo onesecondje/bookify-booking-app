@@ -8,7 +8,7 @@ export type BookingSelection = {
 };
 
 export type BookingConfirmationResult =
-  | { status: BookingConfirmationStatus.Confirmed; bookingId: string }
+  | { status: BookingConfirmationStatus.Submitted; bookingId: string }
   | { status: BookingConfirmationStatus.Conflict }
   | { status: BookingConfirmationStatus.InvalidContact; field: keyof BookingContact }
   | { status: BookingConfirmationStatus.Unavailable };

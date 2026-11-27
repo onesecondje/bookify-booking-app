@@ -1,6 +1,6 @@
 export enum BookingConfirmationStatus {
   Idle = 'idle',
-  Confirmed = 'confirmed',
+  Submitted = 'submitted',
   Conflict = 'conflict',
   InvalidContact = 'invalid-contact',
   Unavailable = 'unavailable',

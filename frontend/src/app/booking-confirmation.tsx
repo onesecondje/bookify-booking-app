@@ -17,10 +17,11 @@ export function BookingConfirmation({ selection, timeLabel, timeZone }: BookingC
   const invalidField =
     state.status === BookingConfirmationStatus.InvalidContact ? state.field : undefined;
 
-  if (state.status === BookingConfirmationStatus.Confirmed) {
+  if (state.status === BookingConfirmationStatus.Submitted) {
     return (
       <div className={styles.slotResults} role="status">
-        <strong>Booking confirmed</strong>
+        <strong>Booking request sent</strong>
+        <p>The business still needs to confirm your booking.</p>
         <p>
           {selection.date} at {timeLabel} ({timeZone})
         </p>
@@ -69,7 +70,7 @@ export function BookingConfirmation({ selection, timeLabel, timeZone }: BookingC
         </label>
       </div>
       <button className={styles.retry} disabled={pending} type="submit">
-        {pending ? 'Confirming…' : 'Confirm booking'}
+        {pending ? 'Sending…' : 'Request booking'}
       </button>
       {state.status === BookingConfirmationStatus.Unavailable && (
         <p role="status">

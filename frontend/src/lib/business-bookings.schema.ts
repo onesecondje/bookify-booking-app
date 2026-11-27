@@ -17,6 +17,7 @@ function isBooking(value: unknown): value is BusinessBooking {
     isUtcInstant(value.startsAt) &&
     isUtcInstant(value.endsAt) &&
     Date.parse(value.startsAt) < Date.parse(value.endsAt) &&
+    (value.approvedAt === null || isUtcInstant(value.approvedAt)) &&
     (value.cancelledAt === null || isUtcInstant(value.cancelledAt)) &&
     (value.customerName === null || typeof value.customerName === 'string') &&
     (value.customerPhone === null || typeof value.customerPhone === 'string') &&

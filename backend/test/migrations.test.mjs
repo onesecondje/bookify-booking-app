@@ -18,6 +18,14 @@ const baseline = await readFile(
   new URL('../prisma/migrations/0_init/migration.sql', import.meta.url),
   'utf8',
 );
+const migrations = [
+  '0_init',
+  '20261110000100_add_specialists_and_service_assignments',
+  '20261112000100_add_specialist_working_periods',
+  '20261118000100_add_bookings',
+  '20261119000100_add_booking_customer_contact',
+  '20261126000100_add_booking_approval',
+];
 
 async function migrate(schema, ...args) {
   const url = new URL(process.env.DATABASE_URL);
@@ -104,6 +112,7 @@ test('bookings retain their intervals and atomically prevent active specialist o
       assert.equal(start, '2099-01-05T08:00:00.000Z');
       assert.equal(end, '2099-01-05T08:30:00.000Z');
       assert.equal(original.cancelledAt, null);
+      assert.equal(original.approvedAt, null);
       assert.equal(original.customerName, null);
       assert.equal(original.customerPhone, null);
       const withContact = await prisma.booking.update({
@@ -188,18 +197,51 @@ test('bookings retain their intervals and atomically prevent active specialist o
   });
 });
 
+test('booking approval migration preserves the status of existing bookings', async () => {
+  await withDatabase(async (pool) => {
+    for (const migration of migrations.slice(0, -1)) {
+      await pool.query(
+        await readFile(
+          new URL(`../prisma/migrations/${migration}/migration.sql`, import.meta.url),
+          'utf8',
+        ),
+      );
+    }
+    await pool.query(`
+      WITH business AS (
+        INSERT INTO businesses (name, time_zone) VALUES ('Studio', 'UTC') RETURNING id
+      ), specialist AS (
+        INSERT INTO specialists (business_id, name) SELECT id, 'Alex' FROM business RETURNING id
+      ), service AS (
+        INSERT INTO services (business_id, name, duration_minutes)
+        SELECT id, 'Haircut', 30 FROM business RETURNING id
+      )
+      INSERT INTO bookings (business_id, specialist_id, service_id, starts_at, ends_at, cancelled_at, created_at)
+      SELECT business.id, specialist.id, service.id, '2099-01-05T10:00:00Z', '2099-01-05T10:30:00Z',
+        cancelled_at, '2099-01-01T09:00:00Z'
+      FROM business, specialist, service, (VALUES (NULL::timestamptz), ('2099-01-02T09:00:00Z')) AS history(cancelled_at);
+    `);
+    const original = await pool.query('SELECT * FROM bookings ORDER BY id');
+    await pool.query(
+      await readFile(
+        new URL(`../prisma/migrations/${migrations.at(-1)}/migration.sql`, import.meta.url),
+        'utf8',
+      ),
+    );
+    const migrated = await pool.query('SELECT * FROM bookings ORDER BY id');
+    assert.deepEqual(
+      migrated.rows,
+      original.rows.map((row) => ({ ...row, approved_at: row.created_at })),
+    );
+  });
+});
+
 test('Prisma deploy is repeatable and preserves database constraints and defaults', async () => {
   await withDatabase(async (pool, schema) => {
     await migrate(schema, 'deploy');
     await migrate(schema, 'deploy');
     const history = await pool.query('SELECT migration_name, finished_at FROM _prisma_migrations');
-    assert.deepEqual(history.rows.map((row) => row.migration_name).sort(), [
-      '0_init',
-      '20261110000100_add_specialists_and_service_assignments',
-      '20261112000100_add_specialist_working_periods',
-      '20261118000100_add_bookings',
-      '20261119000100_add_booking_customer_contact',
-    ]);
+    assert.deepEqual(history.rows.map((row) => row.migration_name).sort(), migrations);
     assert.ok(history.rows.every((row) => row.finished_at));
     const { rows: businesses } = await pool.query(
       'INSERT INTO businesses (name, time_zone) VALUES ($1, $2) RETURNING *',
@@ -281,7 +323,7 @@ test('baselining existing tables preserves records and does not recreate tables'
       tableBefore,
     );
     assert.equal((await pool.query('SELECT * FROM businesses')).rowCount, 1);
-    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, 5);
+    assert.equal((await pool.query('SELECT * FROM _prisma_migrations')).rowCount, migrations.length);
   });
 });
 

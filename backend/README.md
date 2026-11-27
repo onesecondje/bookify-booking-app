@@ -347,7 +347,7 @@ then takes both stored endpoints from the matching slot. Extra fields such as
 `endsAt` are ignored.
 
 - `201` returns `{ booking: { id, businessId, serviceId, specialistId, startsAt, endsAt } }`
-  with UTC timestamps.
+  with UTC timestamps. The booking is pending staff approval and reserves the slot.
 - `400` covers invalid IDs, body, date, or timestamp. Missing or invalid contact
   fields return `INVALID_CUSTOMER_NAME` or `INVALID_CUSTOMER_PHONE`.
 - `404` covers a missing business, unavailable service, or unavailable assignment.
@@ -375,16 +375,25 @@ empty, the endpoint denies access. Missing or invalid credentials return `401`.
 A valid token used with another business ID returns `403`.
 
 The response is `200 { bookings: [...] }`, sorted by start time and then ID.
-Each booking includes its ID, UTC start and end, cancellation time, customer
-name and phone, and the IDs and names of its service and specialist. Future
+Each booking includes its ID, UTC start and end, nullable `approvedAt` and
+`cancelledAt` timestamps, customer name and phone, and the IDs and names of its
+service and specialist. Future
 cancelled bookings are included with `cancelledAt`; legacy contacts may be null.
 An empty list returns `200`. Responses use `Cache-Control: no-store`.
 
-`PATCH /api/businesses/:businessId/bookings/:bookingId/cancel` uses the same
-credentials and cancels an upcoming booking for the managed business. It sets
-`cancelledAt` and releases the slot. It returns `204` on success, including a
-repeat request for a still-upcoming cancelled booking. An invalid booking ID
-returns `400`. Missing, past, and foreign bookings return `404`.
+The protected `PATCH /api/businesses/:businessId/bookings/:bookingId/{action}`
+endpoints use the same credentials and apply to upcoming bookings for the managed
+business.
+
+- `approve` sets `approvedAt` on a pending booking and keeps the slot reserved.
+- `reject` sets `cancelledAt` on a pending booking and releases the slot.
+- `cancel` sets `cancelledAt` on a confirmed booking and releases the slot.
+  Repeating cancellation of a still-upcoming cancelled booking succeeds.
+
+Each transition checks the expected state in the same database statement that
+saves the decision. Success returns `204`, invalid booking IDs return `400`,
+and missing, past, and foreign bookings return `404`. A decision incompatible
+with the current state returns `409 BOOKING_STATE_CONFLICT`.
 
 ## Demonstration data
 

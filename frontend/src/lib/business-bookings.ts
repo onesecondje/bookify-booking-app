@@ -1,7 +1,7 @@
 import 'server-only';
 import { businessApiRequest } from './business-api-request';
 import { parseBusinessBookings } from './business-bookings.schema';
-import type { BusinessBooking } from './types/business-bookings.types';
+import type { BusinessBooking, BusinessBookingAction } from './types/business-bookings.types';
 import { isUuid } from './validation/uuid';
 
 export async function getBusinessBookings(): Promise<BusinessBooking[] | null> {
@@ -17,16 +17,19 @@ export async function getBusinessBookings(): Promise<BusinessBooking[] | null> {
   }
 }
 
-export async function cancelBusinessBooking(bookingId: string): Promise<boolean> {
+export async function updateBusinessBooking(
+  bookingId: string,
+  action: BusinessBookingAction,
+): Promise<number | null> {
   if (!isUuid(bookingId)) {
-    return false;
+    return null;
   }
   try {
     const { url, options } = businessApiRequest('bookings');
-    url.pathname += `/${bookingId}/cancel`;
+    url.pathname += `/${bookingId}/${action}`;
     const response = await fetch(url, { ...options, method: 'PATCH' });
-    return response.status === 204;
+    return response.status;
   } catch {
-    return false;
+    return null;
   }
 }

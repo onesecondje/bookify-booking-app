@@ -2,6 +2,7 @@ import { canViewBusinessDashboard } from '@/lib/business-dashboard-auth';
 import { getBusinessBookings } from '@/lib/business-bookings';
 import { getBusinessSchedule } from '@/lib/business-schedule';
 import { getBusinessServices } from '@/lib/business-services';
+import type { BusinessBooking } from '@/lib/types/business-bookings.types';
 import { isUuid } from '@/lib/validation/uuid';
 import { headers } from 'next/headers';
 import Link from 'next/link';
@@ -9,8 +10,16 @@ import { notFound } from 'next/navigation';
 import styles from './business-bookings.module.css';
 import { BusinessServices } from './business-services';
 import { CancelBookingForm } from './cancel-booking-form';
+import { ReviewBookingForm } from './review-booking-form';
 import type { BusinessDashboardProps } from './types/business-dashboard.types';
 import { WeeklySchedule } from './weekly-schedule';
+
+function getBookingStatus({ approvedAt, cancelledAt }: BusinessBooking) {
+  if (cancelledAt) {
+    return approvedAt ? 'Cancelled' : 'Rejected';
+  }
+  return approvedAt ? 'Confirmed' : 'Pending confirmation';
+}
 
 export default async function BusinessDashboard({ searchParams }: BusinessDashboardProps) {
   if (!canViewBusinessDashboard((await headers()).get('authorization'))) {
@@ -52,7 +61,7 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
                 <th scope="col">Customer</th>
                 <th scope="col">Phone</th>
                 <th scope="col">Status</th>
-                <th scope="col">Cancelled at (UTC)</th>
+                <th scope="col">Rejected or cancelled at (UTC)</th>
                 <th scope="col">Actions</th>
               </tr>
             </thead>
@@ -72,7 +81,7 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
                   <td>{booking.specialist.name}</td>
                   <td>{booking.customerName ?? 'Not provided'}</td>
                   <td>{booking.customerPhone ?? 'Not provided'}</td>
-                  <td>{booking.cancelledAt ? 'Cancelled' : 'Confirmed'}</td>
+                  <td>{getBookingStatus(booking)}</td>
                   <td>
                     {booking.cancelledAt ? (
                       <time dateTime={booking.cancelledAt}>
@@ -82,7 +91,14 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
                       '—'
                     )}
                   </td>
-                  <td>{!booking.cancelledAt && <CancelBookingForm bookingId={booking.id} />}</td>
+                  <td>
+                    {!booking.cancelledAt &&
+                      (booking.approvedAt ? (
+                        <CancelBookingForm bookingId={booking.id} />
+                      ) : (
+                        <ReviewBookingForm bookingId={booking.id} />
+                      ))}
+                  </td>
                 </tr>
               ))}
             </tbody>

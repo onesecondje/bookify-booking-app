@@ -89,6 +89,7 @@ model Booking {
   serviceId     String     @map("service_id") @db.Uuid
   startsAt      DateTime   @map("starts_at") @db.Timestamptz(6)
   endsAt        DateTime   @map("ends_at") @db.Timestamptz(6)
+  approvedAt    DateTime?  @map("approved_at") @db.Timestamptz(6)
   cancelledAt   DateTime?  @map("cancelled_at") @db.Timestamptz(6)
   customerName  String?    @map("customer_name")
   customerPhone String?    @map("customer_phone")
