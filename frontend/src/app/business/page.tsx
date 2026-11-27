@@ -10,6 +10,8 @@ import { notFound } from 'next/navigation';
 import styles from './business-bookings.module.css';
 import { BusinessServices } from './business-services';
 import { CancelBookingForm } from './cancel-booking-form';
+import { bookingFilters } from './constants/booking-filters';
+import { BookingFilter } from './enums/booking-filter.enum';
 import { ReviewBookingForm } from './review-booking-form';
 import type { BusinessDashboardProps } from './types/business-dashboard.types';
 import { WeeklySchedule } from './weekly-schedule';
@@ -26,14 +28,20 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
     notFound();
   }
 
-  const { specialistId } = await searchParams;
+  const { specialistId, bookingStatus } = await searchParams;
   const selectedId = isUuid(specialistId) ? specialistId : undefined;
   const invalidSelection = specialistId !== undefined && selectedId === undefined;
+  const activeFilter =
+    bookingFilters.find(({ value }) => value === bookingStatus) ?? bookingFilters[0];
   const [bookings, schedule, services] = await Promise.all([
     getBusinessBookings(),
     getBusinessSchedule(selectedId),
     getBusinessServices(),
   ]);
+  const visibleBookings =
+    activeFilter.status === null
+      ? bookings
+      : (bookings?.filter((booking) => getBookingStatus(booking) === activeFilter.status) ?? null);
   const dateTime = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -46,10 +54,30 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
         Back to booking
       </Link>
       <h1>Upcoming bookings</h1>
-      {bookings === null ? (
+      <nav className={styles.bookingFilters} aria-label="Booking status">
+        {bookingFilters.map(({ value, label }) => {
+          const query = new URLSearchParams();
+          if (selectedId) {
+            query.set('specialistId', selectedId);
+          }
+          if (value !== BookingFilter.All) {
+            query.set('bookingStatus', value);
+          }
+          return (
+            <Link
+              key={value}
+              href={query.size ? `/business?${query}` : '/business'}
+              aria-current={value === activeFilter.value ? 'page' : undefined}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+      {visibleBookings === null ? (
         <p role="status">Bookings are unavailable. Refresh the page to try again.</p>
-      ) : bookings.length === 0 ? (
-        <p>No upcoming bookings.</p>
+      ) : visibleBookings.length === 0 ? (
+        <p>{activeFilter.emptyMessage}</p>
       ) : (
         <div className={styles.tableScroll}>
           <table className={styles.table} aria-label="Upcoming bookings">
@@ -66,7 +94,7 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
               </tr>
             </thead>
             <tbody>
-              {bookings.map((booking) => (
+              {visibleBookings.map((booking) => (
                 <tr key={booking.id}>
                   <td>
                     <time dateTime={booking.startsAt}>
@@ -109,7 +137,11 @@ export default async function BusinessDashboard({ searchParams }: BusinessDashbo
         services={services}
         specialists={schedule?.specialists.filter(({ isActive }) => isActive) ?? null}
       />
-      <WeeklySchedule result={schedule} invalidSelection={invalidSelection} />
+      <WeeklySchedule
+        result={schedule}
+        invalidSelection={invalidSelection}
+        bookingFilter={activeFilter.value}
+      />
     </main>
   );
 }

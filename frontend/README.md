@@ -174,6 +174,11 @@ Use **Approve** to confirm a request or **Reject** to release its slot.
 Use **Cancel booking** and approve the prompt to release a confirmed slot.
 The dashboard shows rejected and cancelled bookings with their final status.
 
+Switch between **All bookings**, **Confirmed bookings**, and **Rejected
+bookings** in the upcoming booking list. Pending requests and bookings
+cancelled after confirmation appear in **All bookings**. The selected filter is
+stored in the URL.
+
 In **Weekly schedule**, choose a specialist and select **Show schedule**. The
 selection is stored in the `specialistId` URL parameter. Active specialists are
 listed first, then inactive specialists, with each group ordered by name and ID.
@@ -212,8 +217,6 @@ slot that fits the service duration.
    and assigned specialist. Provide separate views for supervisors and
    specialists. Supervisors see bookings across their business, and specialists
    see only their own bookings.
-3. Add booking filters to the business dashboard. Staff can switch between
-   **All bookings**, **Confirmed bookings**, and **Rejected bookings**.
 
 ## Verification
 

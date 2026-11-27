@@ -14,6 +14,24 @@
   text-decoration: underline;
 }
 
+.bookingFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.bookingFilters a {
+  padding-block: 0.375rem;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.bookingFilters a[aria-current='page'] {
+  font-weight: 700;
+  text-decoration-thickness: 0.1875rem;
+}
+
 .scheduleForm {
   display: flex;
   align-items: end;

@@ -1,5 +1,6 @@
 import styles from './business-bookings.module.css';
 import { weekdays } from './constants/weekdays';
+import { BookingFilter } from './enums/booking-filter.enum';
 import type { WeeklyScheduleProps } from './types/weekly-schedule.types';
 import { WorkingDayForm } from './working-day-form';
 
@@ -9,7 +10,7 @@ function formatWorkingTime(minute: number): string {
   return `${hours}:${minutes}`;
 }
 
-export function WeeklySchedule({ result, invalidSelection }: WeeklyScheduleProps) {
+export function WeeklySchedule({ result, invalidSelection, bookingFilter }: WeeklyScheduleProps) {
   const specialists = result?.specialists ?? [];
   const schedule = invalidSelection ? null : result?.schedule;
 
@@ -18,6 +19,9 @@ export function WeeklySchedule({ result, invalidSelection }: WeeklyScheduleProps
       <h2 id="schedule-title">Weekly schedule</h2>
       {specialists.length > 0 && (
         <form className={styles.scheduleForm} action="/business" method="get">
+          {bookingFilter !== BookingFilter.All && (
+            <input type="hidden" name="bookingStatus" value={bookingFilter} />
+          )}
           <label>
             Specialist
             <select name="specialistId" defaultValue={schedule?.id ?? ''} required>
